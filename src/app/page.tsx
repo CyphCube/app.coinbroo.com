@@ -106,12 +106,7 @@ export default function TradingPage() {
         priceChange={priceChange}
       />
 
-      {/* WS status indicator */}
-      {!connected && (
-        <div className="bg-amber-900/30 border-b border-amber-700/50 px-3 py-1 text-2xs text-amber-400 text-center">
-          Connecting to live data...
-        </div>
-      )}
+
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
@@ -152,12 +147,14 @@ export default function TradingPage() {
             </span>
           </div>
           {/* TradingView widget placeholder */}
-           <div className="flex-1 relative">
-            <iframe
-              src={`https://www.tradingview.com/widgetembed/?symbol=BYBIT%3A${selectedCoin}USDT.P&interval=15&theme=dark&style=1&locale=en&hide_side_toolbar=0&allow_symbol_change=0`}
-              className="w-full h-full border-0"
-              allowTransparency={true}
-            />
+          <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
+            <div className="text-center">
+              <p className="text-text-muted text-sm mb-2">Chart</p>
+              <p className="text-text-muted text-xs">
+                Embed TradingView widget here:<br />
+                <code className="text-accent-blue text-2xs">new TradingView.widget(&#123; symbol: &quot;HYPERLIQUID:{selectedCoin}USDT&quot; &#125;)</code>
+              </p>
+            </div>
           </div>
         </div>
 
