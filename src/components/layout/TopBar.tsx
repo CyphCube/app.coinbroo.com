@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
+import { TransferModal } from '@/components/ui/TransferModal'
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
@@ -15,7 +17,9 @@ interface TopBarProps {
 
 export function TopBar({ selectedMarket, markPrice, priceChange }: TopBarProps) {
   const { isConnected } = useAccount()
-  const { accountValue, totalPnl } = useAccount_HL()
+  const { accountValue, availableBalance, totalPnl } = useAccount_HL()
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
   const isUp = priceChange >= 0
 
   return (
@@ -60,12 +64,39 @@ export function TopBar({ selectedMarket, markPrice, priceChange }: TopBarProps) 
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Deposit / Withdraw buttons */}
+      {isConnected && (
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => { setTransferTab('deposit'); setTransferOpen(true) }}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-long hover:bg-long-dim text-white transition-colors"
+          >
+            Deposit
+          </button>
+          <button
+            onClick={() => { setTransferTab('withdraw'); setTransferOpen(true) }}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border-primary text-text-secondary hover:bg-bg-hover transition-colors"
+          >
+            Withdraw
+          </button>
+        </div>
+      )}
+
       {/* Wallet connect */}
       <ConnectButton
         showBalance={false}
         chainStatus="none"
         accountStatus="avatar"
       />
+
+      {/* Transfer modal */}
+      {transferOpen && (
+        <TransferModal
+          initialTab={transferTab}
+          availableBalance={availableBalance}
+          onClose={() => setTransferOpen(false)}
+        />
+      )}
     </header>
   )
 }

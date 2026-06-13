@@ -8,6 +8,7 @@ import { TradePanel } from '@/components/trading/TradePanel'
 import { Positions } from '@/components/trading/Positions'
 import { MarketList } from '@/components/trading/MarketList'
 import { useHLWebSocket } from '@/hooks/useHLWebSocket'
+import { useAutoDisconnect } from '@/hooks/useAutoDisconnect'
 import { getMeta, getAllMids, getBaseFees } from '@/lib/hyperliquid'
 import type { OrderBook as OBType } from '@/hooks/useHLWebSocket'
 
@@ -30,6 +31,7 @@ export default function TradingPage() {
   const [orderBook, setOrderBook] = useState<OBType | null>(null)
   const [priceHistory, setPriceHistory] = useState<Record<string, { price: number; prev: number }>>({})
   const [baseFees, setBaseFees] = useState({ taker: 0.00045, maker: 0.00015 })
+  useAutoDisconnect()
 
   // Load meta (market info) on mount
   useEffect(() => {
