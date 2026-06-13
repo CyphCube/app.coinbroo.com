@@ -242,27 +242,15 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, onOrderPl
               <span className="text-short font-mono">${liqPrice.toFixed(1)}</span>
             </div>
           )}
-          <div className="border-t border-border-primary pt-1.5 space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-text-muted">
-                {orderType === 'market' ? 'Taker fee (0.035%)' : 'Maker fee (-0.010%)'}
-              </span>
-              <span className={`font-mono ${orderType === 'limit' ? 'text-long' : 'text-text-secondary'}`}>
-                {orderType === 'limit' ? '-' : ''}${Math.abs(hlFeeUsd).toFixed(4)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-text-muted">Builder fee ({(BUILDER_FEE / 1000).toFixed(3)}%)</span>
-              <span className="text-text-secondary font-mono">${builderFeeUsd.toFixed(4)}</span>
-            </div>
-            {orderValue > 0 && (
-              <div className="flex justify-between text-xs border-t border-border-primary pt-1">
-                <span className="text-text-secondary font-medium">Total fee</span>
-                <span className={`font-mono font-medium ${orderType === 'limit' && hlFeeUsd + builderFeeUsd < 0 ? 'text-long' : 'text-text-primary'}`}>
-                  {(hlFeeUsd + builderFeeUsd) < 0 ? '-' : ''}${Math.abs(hlFeeUsd + builderFeeUsd).toFixed(4)}
-                </span>
-              </div>
-            )}
+          <div className="flex justify-between text-xs border-t border-border-primary pt-1.5">
+            <span className="text-text-muted">
+              {orderType === 'market'
+                ? `Fee (0.035% + ${(BUILDER_FEE / 1000).toFixed(3)}%)`
+                : `Fee (-0.010% + ${(BUILDER_FEE / 1000).toFixed(3)}%)`}
+            </span>
+            <span className={`font-mono ${orderType === 'limit' && hlFeeUsd + builderFeeUsd < 0 ? 'text-long' : 'text-text-secondary'}`}>
+              {(hlFeeUsd + builderFeeUsd) < 0 ? '-' : ''}${Math.abs(hlFeeUsd + builderFeeUsd).toFixed(4)}
+            </span>
           </div>
         </div>
 
