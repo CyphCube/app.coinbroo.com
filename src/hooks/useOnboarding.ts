@@ -5,7 +5,7 @@ import { useWalletClient } from 'wagmi'
 import { isNewUser, postExchange } from '@/lib/hyperliquid'
 import { signApproveBuilderFee } from '@/lib/signing'
 
-type OnboardState = 'idle' | 'checking' | 'approving' | 'done' | 'error'
+type OnboardState = 'idle' | 'checking' | 'approving' | 'done' | 'error' | 'cancelled'
 
 const STORAGE_KEY = 'ht_builder_approved'
 
@@ -36,9 +36,16 @@ export function useOnboarding() {
     }
   }, [])
 
+  const reset = useCallback(() => {
+    setState('idle')
+    setError(null)
+  }, [])
+
   const runOnboarding = useCallback(async (address: string) => {
     if (!walletClient) return
     if (isApproved(address)) return
+    // Don't re-trigger if already in progress or cancelled
+    if (state === 'checking' || state === 'approving' || state === 'cancelled') return
 
     setState('checking')
     setError(null)
@@ -51,11 +58,10 @@ export function useOnboarding() {
 
       const { action, nonce, signature } = await signApproveBuilderFee(walletClient)
 
-      // Log exact payload for debugging
-      const payload = { action, nonce, signature }
-      console.log('Sending to HL exchange:', JSON.stringify(payload, null, 2))
+      console.log('Sending to HL exchange:', JSON.stringify({ action, nonce, signature }, null, 2))
 
       const result = await postExchange(action, nonce, signature)
+
       console.log('HL exchange result:', result)
 
       if (result?.status === 'ok') {
@@ -67,14 +73,14 @@ export function useOnboarding() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error'
       console.error('Onboarding error:', msg)
-      if (msg.includes('rejected') || msg.includes('denied')) {
-        setState('idle')
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled') || msg.includes('cancel') || msg.includes('User rejected')) {
+        setState('cancelled') // Stop retrying — user explicitly cancelled
       } else {
         setError(msg)
         setState('error')
       }
     }
-  }, [walletClient, isApproved, markApproved])
+  }, [walletClient, isApproved, markApproved, state])
 
-  return { state, error, isNew, runOnboarding, isApproved }
+  return { state, error, isNew, runOnboarding, isApproved, reset }
 }

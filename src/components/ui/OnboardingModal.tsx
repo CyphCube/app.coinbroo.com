@@ -10,16 +10,16 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
 export function OnboardingModal() {
   const { address, isConnected } = useAccount()
-  const { state, error, isNew, runOnboarding, isApproved } = useOnboarding()
+  const { state, error, isNew, runOnboarding, isApproved, reset } = useOnboarding()
 
-  // Auto-trigger onboarding when wallet connects
+  // Auto-trigger only when idle — not when cancelled or in progress
   useEffect(() => {
     if (isConnected && address && !isApproved(address) && state === 'idle') {
       runOnboarding(address)
     }
   }, [isConnected, address, state, isApproved, runOnboarding])
 
-  // Don't show modal if already approved
+  // Don't show modal if approved or done
   if (!isConnected || (address && isApproved(address)) || state === 'done') {
     return null
   }
@@ -45,6 +45,19 @@ export function OnboardingModal() {
             <div className="flex justify-center">
               <ConnectButton />
             </div>
+          </>
+        ) : state === 'cancelled' ? (
+          <>
+            <h2 className="text-text-primary font-semibold mb-2">Approval skipped</h2>
+            <p className="text-text-muted text-sm mb-4">
+              You cancelled the approval. {APP_NAME} needs this one-time signature to collect builder fees on your trades.
+            </p>
+            <button
+              onClick={reset}
+              className="w-full py-2.5 bg-accent-blue text-white rounded-lg text-sm font-medium hover:bg-accent-blue-dim transition-colors"
+            >
+              Try again
+            </button>
           </>
         ) : state === 'checking' ? (
           <>
@@ -91,7 +104,7 @@ export function OnboardingModal() {
             <h2 className="text-text-primary font-semibold mb-2">Something went wrong</h2>
             <p className="text-short text-sm mb-4">{error}</p>
             <button
-              onClick={() => address && runOnboarding(address)}
+              onClick={reset}
               className="w-full py-2.5 bg-accent-blue text-white rounded-lg text-sm font-medium hover:bg-accent-blue-dim transition-colors"
             >
               Try again
