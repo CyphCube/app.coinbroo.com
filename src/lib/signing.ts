@@ -25,10 +25,14 @@ export async function signApproveBuilderFee(walletClient: WalletClient): Promise
   const maxFeeRate = `${(BUILDER_FEE / 1000).toFixed(4)}%`
   const account = walletClient.account!
 
+  // Use wallet's actual chainId so viem doesn't reject the signature
+  const chainId = await walletClient.getChainId()
+  const signatureChainId = '0x' + chainId.toString(16)
+
   const action = {
     type: 'approveBuilderFee',
     hyperliquidChain: 'Mainnet',
-    signatureChainId: '0xa4b1',
+    signatureChainId,
     maxFeeRate,
     builder: BUILDER_ADDRESS,
     nonce,
@@ -39,7 +43,7 @@ export async function signApproveBuilderFee(walletClient: WalletClient): Promise
     domain: {
       name: 'HyperliquidSignTransaction',
       version: '1',
-      chainId: 42161,
+      chainId,
       verifyingContract: ZERO_ADDRESS as `0x${string}`,
     },
     types: {
