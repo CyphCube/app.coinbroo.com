@@ -37,9 +37,9 @@ function OBRow({ px, sz, total, side, maxCum, cum }: {
   const pct = maxCum > 0 ? (cum / maxCum) * 100 : 0
   const isBid = side === 'bid'
   return (
-    <div className="relative grid grid-cols-3 items-center px-2 py-[2.5px] hover:bg-bg-hover cursor-default text-2xs">
+    <div className="relative grid grid-cols-3 items-center px-2 flex-1 min-h-0 hover:bg-bg-hover cursor-default text-2xs">
       <div
-        className={`absolute top-0 bottom-0 right-0 opacity-[0.13] ${isBid ? 'bg-long' : 'bg-short'}`}
+        className={`absolute top-0 bottom-0 left-0 opacity-[0.13] ${isBid ? 'bg-long' : 'bg-short'}`}
         style={{ width: `${pct}%` }}
       />
       <span className={`font-mono z-10 tabular-nums ${isBid ? 'text-long' : 'text-short'}`}>{fmtPrice(px)}</span>
@@ -107,7 +107,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
 
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Asks */}
-            <div className="flex-1 flex flex-col justify-end overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
               {askRows.map((r, i) => (
                 <OBRow key={`ask-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="ask" maxCum={maxCum} />
               ))}
@@ -121,7 +121,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
             </div>
 
             {/* Bids */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
               {bidRows.map((r, i) => (
                 <OBRow key={`bid-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="bid" maxCum={maxCum} />
               ))}
