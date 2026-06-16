@@ -138,7 +138,7 @@ export default function TradingPage() {
       </div>
 
       {/* Positions bar */}
-      <div className="h-44 border-t border-border-primary flex-shrink-0 bg-bg-secondary">
+      <div className="border-t border-border-primary flex-shrink-0 bg-bg-secondary">
         <Positions markPrices={mids} assetIndexMap={assetIndexMap} />
       </div>
     </div>

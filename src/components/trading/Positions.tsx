@@ -88,6 +88,10 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
   const { positions, openOrders, fills, totalPnl, accountValue, availableBalance, refresh } = useAccount_HL()
   const { data: walletClient } = useWalletClient()
   const [tab, setTab] = useState<'positions' | 'orders' | 'history'>('positions')
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null)
+
+  const hasContent = positions.length > 0 || (openOrders as unknown[]).length > 0
+  const open = userExpanded ?? hasContent
 
   const tabs = [
     { key: 'positions' as const, label: `Positions (${positions.length})` },
@@ -96,13 +100,13 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
   ]
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center border-b border-border-primary flex-shrink-0 px-1">
         {tabs.map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setUserExpanded(true) }}
             className={`px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'text-text-primary border-b-2 border-accent-blue -mb-px'
@@ -114,7 +118,7 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
         ))}
 
         {/* Account summary on right */}
-        <div className="ml-auto pr-3 flex items-center gap-5 text-xs">
+        <div className="ml-auto pr-2 flex items-center gap-5 text-xs">
           {accountValue > 0 && (
             <>
               <span className="text-text-muted">
@@ -133,10 +137,22 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
               )}
             </>
           )}
+          {/* Collapse / expand toggle */}
+          <button
+            onClick={() => setUserExpanded(!open)}
+            className="p-1 text-text-muted hover:text-text-primary transition-colors"
+            title={open ? 'Collapse' : 'Expand'}
+          >
+            <svg className={`w-3.5 h-3.5 transition-transform ${open ? '' : 'rotate-180'}`} viewBox="0 0 12 12" fill="none">
+              <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
 
       {/* Content */}
+      {open && (
+      <div className="h-52 overflow-hidden flex flex-col">
       <div className="flex-1 overflow-auto">
         {tab === 'positions' && (
           positions.length === 0 ? (
@@ -234,6 +250,8 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
           )
         )}
       </div>
+      </div>
+      )}
     </div>
   )
 }
