@@ -17,8 +17,21 @@ async function info(body: object) {
   return res.json()
 }
 
+export interface AssetCtx {
+  funding: string
+  openInterest: string
+  prevDayPx: string
+  dayNtlVlm: string
+  markPx: string
+  midPx: string
+}
+
 export async function getMeta() {
   return info({ type: 'meta' })
+}
+
+export async function getMetaAndAssetCtxs(): Promise<[{ universe: Market[] }, AssetCtx[]]> {
+  return info({ type: 'metaAndAssetCtxs' })
 }
 
 export async function getAllMids(): Promise<Record<string, string>> {

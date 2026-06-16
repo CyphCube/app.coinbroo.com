@@ -10,80 +10,107 @@ interface OrderBookProps {
   spread: number
 }
 
-function OBRow({
-  level,
-  side,
-  maxSize,
-}: {
+function fmtPrice(px: number) {
+  if (px >= 1000) return px.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  if (px >= 1) return px.toFixed(4)
+  return px.toFixed(6)
+}
+
+function fmtSize(sz: number) {
+  if (sz >= 1000) return sz.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (sz >= 1) return sz.toFixed(2)
+  return sz.toFixed(4)
+}
+
+function OBRow({ level, side, maxCumSize, cumSize }: {
   level: OrderBookLevel
   side: 'bid' | 'ask'
-  maxSize: number
+  maxCumSize: number
+  cumSize: number
 }) {
   const px = parseFloat(level.px)
   const sz = parseFloat(level.sz)
-  const pct = maxSize > 0 ? (sz / maxSize) * 100 : 0
+  const pct = maxCumSize > 0 ? (cumSize / maxCumSize) * 100 : 0
   const isBid = side === 'bid'
 
   return (
-    <div className="relative flex justify-between items-center px-2.5 py-[2px] hover:bg-bg-hover cursor-default group">
-      {/* Depth bar */}
+    <div className="relative flex items-center justify-between px-2 py-[3px] hover:bg-bg-hover cursor-default text-xs">
+      {/* Depth bar anchored left */}
       <div
-        className={`absolute top-0 bottom-0 opacity-15 ${isBid ? 'bg-long right-0' : 'bg-short right-0'}`}
+        className={`absolute top-0 bottom-0 left-0 opacity-20 ${isBid ? 'bg-long' : 'bg-short'}`}
         style={{ width: `${pct}%` }}
       />
-      <span className={`font-mono text-xs z-10 ${isBid ? 'text-long' : 'text-short'}`}>
-        {px >= 1000
-          ? px.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-          : px.toFixed(4)}
+      <span className={`font-mono z-10 tabular-nums ${isBid ? 'text-long' : 'text-short'}`}>
+        {fmtPrice(px)}
       </span>
-      <span className="font-mono text-xs text-text-secondary z-10">{sz.toFixed(4)}</span>
-      <span className="font-mono text-2xs text-text-muted z-10 hidden group-hover:block">
-        ${(px * sz).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-      </span>
+      <span className="font-mono z-10 text-text-secondary tabular-nums">{fmtSize(sz)}</span>
     </div>
   )
 }
 
 export function OrderBook({ bids, asks, markPrice, spread }: OrderBookProps) {
-  const displayAsks = asks.slice(0, 10).reverse()
-  const displayBids = bids.slice(0, 10)
+  const N = 12
+  const displayAsks = asks.slice(0, N).reverse()
+  const displayBids = bids.slice(0, N)
 
-  const maxSize = useMemo(() => {
-    const allSizes = [...bids.slice(0, 10), ...asks.slice(0, 10)].map(l => parseFloat(l.sz))
-    return Math.max(...allSizes, 0)
+  const { askCums, bidCums, maxCum } = useMemo(() => {
+    const askSizes = asks.slice(0, N).map(l => parseFloat(l.sz))
+    const bidSizes = bids.slice(0, N).map(l => parseFloat(l.sz))
+
+    const askCumsRaw: number[] = []
+    askSizes.forEach((s, i) => askCumsRaw.push((askCumsRaw[i - 1] || 0) + s))
+    const askCumsReversed = [...askCumsRaw].reverse()
+
+    const bidCums: number[] = []
+    bidSizes.forEach((s, i) => bidCums.push((bidCums[i - 1] || 0) + s))
+
+    const maxCum = Math.max(askCumsRaw[askCumsRaw.length - 1] || 0, bidCums[bidCums.length - 1] || 0)
+
+    return { askCums: askCumsReversed, bidCums, maxCum }
   }, [bids, asks])
 
   const spreadPct = markPrice > 0 ? ((spread / markPrice) * 100).toFixed(3) : '0.000'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex justify-between px-2.5 py-1.5 border-b border-border-primary">
+      {/* Header */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border-primary flex-shrink-0">
         <span className="text-2xs text-text-muted uppercase tracking-wider">Price</span>
         <span className="text-2xs text-text-muted uppercase tracking-wider">Size</span>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Asks (sells) — shown top, reversed */}
+        {/* Asks */}
         <div className="flex-1 flex flex-col justify-end overflow-hidden">
           {displayAsks.map((level, i) => (
-            <OBRow key={`ask-${i}`} level={level} side="ask" maxSize={maxSize} />
+            <OBRow
+              key={`ask-${i}`}
+              level={level}
+              side="ask"
+              cumSize={askCums[i]}
+              maxCumSize={maxCum}
+            />
           ))}
         </div>
 
-        {/* Spread */}
-        <div className="flex justify-between items-center px-2.5 py-1 border-y border-border-primary bg-bg-tertiary">
-          <span className="font-mono text-xs font-medium text-text-primary">
-            ${markPrice > 0
-              ? markPrice.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-              : '—'}
+        {/* Mark price + spread */}
+        <div className="flex items-center justify-between px-2 py-1.5 border-y border-border-primary bg-bg-tertiary flex-shrink-0">
+          <span className={`font-mono text-sm font-semibold ${spread >= 0 ? 'text-text-primary' : 'text-text-primary'}`}>
+            ${markPrice > 0 ? fmtPrice(markPrice) : '—'}
           </span>
-          <span className="text-2xs text-text-muted">Spread {spreadPct}%</span>
+          <span className="text-2xs text-text-muted">{spreadPct}%</span>
         </div>
 
-        {/* Bids (buys) */}
+        {/* Bids */}
         <div className="flex-1 overflow-hidden">
           {displayBids.map((level, i) => (
-            <OBRow key={`bid-${i}`} level={level} side="bid" maxSize={maxSize} />
+            <OBRow
+              key={`bid-${i}`}
+              level={level}
+              side="bid"
+              cumSize={bidCums[i]}
+              maxCumSize={maxCum}
+            />
           ))}
         </div>
       </div>

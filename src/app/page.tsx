@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount } from 'wagmi'
 import { TopBar } from '@/components/layout/TopBar'
 import { OrderBook } from '@/components/trading/OrderBook'
 import { TradePanel } from '@/components/trading/TradePanel'
@@ -9,8 +8,9 @@ import { Positions } from '@/components/trading/Positions'
 import { MarketList } from '@/components/trading/MarketList'
 import { useHLWebSocket } from '@/hooks/useHLWebSocket'
 import { useAutoDisconnect } from '@/hooks/useAutoDisconnect'
-import { getMeta, getAllMids, getBaseFees } from '@/lib/hyperliquid'
+import { getMetaAndAssetCtxs, getBaseFees } from '@/lib/hyperliquid'
 import type { OrderBook as OBType } from '@/hooks/useHLWebSocket'
+import type { AssetCtx } from '@/lib/hyperliquid'
 
 const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'ARB', 'AVAX', 'HYPE', 'SUI', 'WIF', 'PEPE', 'DOGE']
 
@@ -27,28 +27,30 @@ interface Meta {
 export default function TradingPage() {
   const [selectedCoin, setSelectedCoin] = useState('BTC')
   const [meta, setMeta] = useState<Meta>({ universe: [] })
+  const [assetCtxMap, setAssetCtxMap] = useState<Record<string, AssetCtx>>({})
   const [mids, setMids] = useState<Record<string, number>>({})
   const [orderBook, setOrderBook] = useState<OBType | null>(null)
-  const [priceHistory, setPriceHistory] = useState<Record<string, { price: number; prev: number }>>({})
   const [baseFees, setBaseFees] = useState({ taker: 0.00045, maker: 0.00015 })
   useAutoDisconnect()
 
-  // Load meta (market info) on mount
   useEffect(() => {
-    getMeta().then(m => {
+    getMetaAndAssetCtxs().then(([m, ctxs]) => {
       if (m?.universe) setMeta(m)
+      const ctxMap: Record<string, AssetCtx> = {}
+      m.universe.forEach((asset, i) => {
+        if (ctxs[i]) ctxMap[asset.name] = ctxs[i]
+      })
+      setAssetCtxMap(ctxMap)
+      // Seed mids from markPx
+      const seedMids: Record<string, number> = {}
+      m.universe.forEach((asset, i) => {
+        if (ctxs[i]) seedMids[asset.name] = parseFloat(ctxs[i].markPx)
+      })
+      setMids(seedMids)
     })
     getBaseFees().then(setBaseFees)
-    getAllMids().then(allMids => {
-      const parsed: Record<string, number> = {}
-      Object.entries(allMids).forEach(([k, v]) => {
-        parsed[k] = parseFloat(v as string)
-      })
-      setMids(parsed)
-    })
   }, [])
 
-  // WebSocket for live data
   const handleOrderBook = useCallback((data: OBType) => {
     if (data.coin === selectedCoin) setOrderBook(data)
   }, [selectedCoin])
@@ -56,43 +58,37 @@ export default function TradingPage() {
   const handleAllMids = useCallback((data: Record<string, string>) => {
     setMids(prev => {
       const next: Record<string, number> = { ...prev }
-      Object.entries(data).forEach(([k, v]) => {
-        const price = parseFloat(v)
-        setPriceHistory(ph => ({
-          ...ph,
-          [k]: { price, prev: ph[k]?.price || price }
-        }))
-        next[k] = price
-      })
+      Object.entries(data).forEach(([k, v]) => { next[k] = parseFloat(v) })
       return next
     })
   }, [])
 
-  const { connected } = useHLWebSocket({
-    coins: DEFAULT_COINS,
-    onOrderBook: handleOrderBook,
-    onAllMids: handleAllMids,
-  })
+  useHLWebSocket({ coins: DEFAULT_COINS, onOrderBook: handleOrderBook, onAllMids: handleAllMids })
 
   const currentAsset = meta.universe.find(u => u.name === selectedCoin)
+  const currentCtx = assetCtxMap[selectedCoin]
   const markPrice = mids[selectedCoin] || 0
-  const markPrev = priceHistory[selectedCoin]?.prev || markPrice
-  const priceChange = markPrev > 0 ? ((markPrice - markPrev) / markPrev) * 100 : 0
+  const prevDayPx = currentCtx ? parseFloat(currentCtx.prevDayPx) : 0
+  const change24h = prevDayPx > 0 ? ((markPrice - prevDayPx) / prevDayPx) * 100 : 0
+  const funding = currentCtx ? parseFloat(currentCtx.funding) : 0
+  const volume24h = currentCtx ? parseFloat(currentCtx.dayNtlVlm) : 0
+  const openInterest = currentCtx ? parseFloat(currentCtx.openInterest) : 0
 
-  // Build market list from mids
   const markets = DEFAULT_COINS
     .filter(c => mids[c])
-    .map(c => ({
-      name: c,
-      price: mids[c],
-      change24h: priceHistory[c]
-        ? ((mids[c] - priceHistory[c].prev) / priceHistory[c].prev) * 100
-        : 0,
-      volume24h: 0,
-      funding: 0,
-    }))
+    .map(c => {
+      const ctx = assetCtxMap[c]
+      const prev = ctx ? parseFloat(ctx.prevDayPx) : 0
+      const price = mids[c]
+      return {
+        name: c,
+        price,
+        change24h: prev > 0 ? ((price - prev) / prev) * 100 : 0,
+        volume24h: ctx ? parseFloat(ctx.dayNtlVlm) : 0,
+        funding: ctx ? parseFloat(ctx.funding) : 0,
+      }
+    })
 
-  // Order book data
   const bids = orderBook?.levels?.[0] || []
   const asks = orderBook?.levels?.[1] || []
   const topBid = bids[0] ? parseFloat(bids[0].px) : markPrice * 0.9995
@@ -101,22 +97,19 @@ export default function TradingPage() {
 
   return (
     <div className="flex flex-col h-screen bg-bg-primary overflow-hidden">
-<TopBar
+      <TopBar
         selectedMarket={selectedCoin}
         markPrice={markPrice}
-        priceChange={priceChange}
+        change24h={change24h}
+        prevDayPx={prevDayPx}
+        funding={funding}
+        volume24h={volume24h}
+        openInterest={openInterest}
       />
 
-
-
-      {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
-
-        {/* Market list - left sidebar */}
+        {/* Market list */}
         <div className="w-44 flex-shrink-0 border-r border-border-primary hidden lg:flex flex-col">
-          <div className="px-2.5 py-1.5 border-b border-border-primary">
-            <span className="text-2xs text-text-muted uppercase tracking-wider">Markets</span>
-          </div>
           <MarketList
             markets={markets}
             selected={selectedCoin}
@@ -125,29 +118,12 @@ export default function TradingPage() {
         </div>
 
         {/* Order book */}
-        <div className="w-48 flex-shrink-0 border-r border-border-primary hidden md:flex flex-col">
-          <div className="px-2.5 py-1.5 border-b border-border-primary">
-            <span className="text-2xs text-text-muted uppercase tracking-wider">Order Book</span>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <OrderBook
-              bids={bids}
-              asks={asks}
-              markPrice={markPrice}
-              spread={spread}
-            />
-          </div>
+        <div className="w-44 flex-shrink-0 border-r border-border-primary hidden md:flex flex-col">
+          <OrderBook bids={bids} asks={asks} markPrice={markPrice} spread={spread} />
         </div>
 
-        {/* Chart area */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r border-border-primary">
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-primary flex-shrink-0">
-            <span className="text-2xs text-text-muted uppercase tracking-wider">{selectedCoin}-PERP</span>
-            <span className="text-xs text-text-primary font-mono font-medium">
-              ${markPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          {/* TradingView chart */}
+        {/* Chart */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 relative">
             <iframe
               key={selectedCoin}
@@ -158,26 +134,21 @@ export default function TradingPage() {
         </div>
 
         {/* Trade panel */}
-        <div className="w-52 flex-shrink-0 border-l border-border-primary flex flex-col">
-          <div className="px-2.5 py-1.5 border-b border-border-primary flex-shrink-0">
-            <span className="text-2xs text-text-muted uppercase tracking-wider">Place Order</span>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <TradePanel
-              coin={selectedCoin}
-              markPrice={markPrice}
-              assetIndex={meta.universe.findIndex(u => u.name === selectedCoin)}
-              maxLeverage={currentAsset?.maxLeverage || 50}
-              baseTakerFee={baseFees.taker}
-              baseMakerFee={baseFees.maker}
-              onOrderPlaced={() => {}}
-            />
-          </div>
+        <div className="w-56 flex-shrink-0 border-l border-border-primary flex flex-col">
+          <TradePanel
+            coin={selectedCoin}
+            markPrice={markPrice}
+            assetIndex={meta.universe.findIndex(u => u.name === selectedCoin)}
+            maxLeverage={currentAsset?.maxLeverage || 50}
+            baseTakerFee={baseFees.taker}
+            baseMakerFee={baseFees.maker}
+            onOrderPlaced={() => {}}
+          />
         </div>
       </div>
 
       {/* Positions bar */}
-      <div className="h-48 border-t border-border-primary flex-shrink-0 bg-bg-secondary">
+      <div className="h-44 border-t border-border-primary flex-shrink-0 bg-bg-secondary">
         <Positions markPrices={mids} meta={meta} />
       </div>
     </div>
