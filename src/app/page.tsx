@@ -122,24 +122,18 @@ export default function TradingPage() {
 
         {/* Trade panel */}
         <div className="w-60 flex-shrink-0 border-l border-border-primary flex flex-col min-h-0">
-          {market?.tradable !== false ? (
-            <TradePanel
-              coin={market?.display || selectedCoin}
-              markPrice={markPrice}
-              assetIndex={market?.assetIndex ?? -1}
-              maxLeverage={market?.maxLeverage || 50}
-              baseTakerFee={baseFees.taker}
-              baseMakerFee={baseFees.maker}
-              onOrderPlaced={() => {}}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-5">
-              <span className="text-text-secondary text-sm font-medium capitalize">{market?.category} market</span>
-              <span className="text-xs text-text-muted">
-                Trading for {market?.display} isn&apos;t enabled yet on Coinbroo. You can browse live prices and the order book.
-              </span>
-            </div>
-          )}
+          <TradePanel
+            coin={market?.display || selectedCoin}
+            markPrice={markPrice}
+            assetIndex={market?.assetIndex ?? -1}
+            maxLeverage={market?.maxLeverage || 50}
+            baseTakerFee={baseFees.taker}
+            baseMakerFee={baseFees.maker}
+            isSpot={market?.kind === 'spot'}
+            szDecimals={market?.szDecimals ?? 4}
+            baseToken={market?.baseToken}
+            onOrderPlaced={() => {}}
+          />
         </div>
       </div>
 

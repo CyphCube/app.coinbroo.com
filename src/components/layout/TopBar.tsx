@@ -35,16 +35,14 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
 
   const isUp = change24h >= 0
   const fundingPositive = (market?.funding ?? 0) >= 0
-  const isPerp = market?.kind === 'perp' || market?.kind === 'dex'
+  const isPerp = market?.kind === 'perp'
 
-  // Pair label: perps → X-USDC, spot → X/USDC, dex → display
+  // Pair label: perps → X-USDC, spot → X/USDC
   const pairLabel = !market
     ? '—'
     : market.kind === 'spot'
       ? `${market.display}/USDC`
-      : market.kind === 'dex'
-        ? market.display
-        : `${market.display}-USDC`
+      : `${market.display}-USDC`
 
   const stats: { label: string; value: string; color: string }[] = [
     { label: '24h Change', value: `${isUp ? '+' : ''}${change24h.toFixed(2)}%`, color: isUp ? 'text-long' : 'text-short' },
@@ -109,7 +107,7 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
       {marketOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMarketOpen(false)} />
-          <div className="fixed left-4 top-[88px] z-50 w-72 h-[440px] bg-bg-secondary border border-border-primary rounded-lg shadow-2xl flex flex-col overflow-hidden">
+          <div className="fixed left-4 top-[88px] z-50 w-[820px] max-w-[calc(100vw-2rem)] h-[520px] bg-bg-secondary border border-border-primary rounded-lg shadow-2xl flex flex-col overflow-hidden">
             <MarketList
               markets={markets}
               selected={market?.coin || ''}

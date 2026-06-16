@@ -66,15 +66,34 @@ export async function signApproveBuilderFee(walletClient: WalletClient): Promise
   return { action, nonce, signature: splitSig(hexSig) }
 }
 
-// ─── Market Order ─────────────────────────────────────────────────────────────
+// ─── Order ────────────────────────────────────────────────────────────────────
 
 export interface OrderParams {
   coin: string
   isBuy: boolean
   sz: number
-  px?: number
-  leverage?: number
+  px?: number              // limit price; omit for market
+  markPx?: number          // current price, required for market orders (slippage)
+  szDecimals?: number      // size decimals for this asset
+  isSpot?: boolean         // spot uses 8 max decimals instead of 6
   reduceOnly?: boolean
+}
+
+// HL price rule: max 5 significant figures, and max (MAX-szDecimals) decimal places.
+// Integer prices are always allowed.
+export function formatPx(px: number, szDecimals: number, isSpot: boolean): string {
+  const maxDecimals = (isSpot ? 8 : 6) - szDecimals
+  let p = parseFloat(px.toPrecision(5))
+  if (!Number.isInteger(p)) {
+    p = parseFloat(p.toFixed(Math.max(0, maxDecimals)))
+  }
+  return String(p)
+}
+
+// Round size DOWN to szDecimals so we never exceed balance.
+export function formatSz(sz: number, szDecimals: number): string {
+  const f = Math.pow(10, szDecimals)
+  return String(Math.floor(sz * f) / f)
 }
 
 export async function signOrder(
@@ -82,17 +101,30 @@ export async function signOrder(
   params: OrderParams
 ): Promise<{ action: object; nonce: number; signature: { r: string; s: string; v: number } }> {
   const nonce = getNonce()
+  const szDecimals = params.szDecimals ?? 4
+  const isSpot = params.isSpot ?? false
   const isMarket = !params.px
+
+  // Market order = IoC limit priced through the book (5% slippage cap)
+  let priceStr: string
+  let tif: 'Gtc' | 'Ioc'
+  if (isMarket) {
+    const ref = params.markPx || 0
+    const slipped = params.isBuy ? ref * 1.05 : ref * 0.95
+    priceStr = formatPx(slipped, szDecimals, isSpot)
+    tif = 'Ioc'
+  } else {
+    priceStr = formatPx(params.px!, szDecimals, isSpot)
+    tif = 'Gtc'
+  }
 
   const order = {
     a: 0,
     b: params.isBuy,
-    p: isMarket ? '0' : params.px!.toFixed(6),
-    s: params.sz.toFixed(6),
+    p: priceStr,
+    s: formatSz(params.sz, szDecimals),
     r: params.reduceOnly ?? false,
-    t: isMarket
-      ? { market: { tpsl: 'none', limitPx: '0' } }
-      : { limit: { tif: 'Gtc' } },
+    t: { limit: { tif } },
   }
 
   const action = {

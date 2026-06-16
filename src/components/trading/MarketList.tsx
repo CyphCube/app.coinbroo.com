@@ -15,20 +15,17 @@ function fmtPrice(p: number) {
   return p.toFixed(5)
 }
 
-function fmtVol(n: number) {
-  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B'
-  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M'
-  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K'
-  return '$' + n.toFixed(0)
+function fmtUsd(n: number) {
+  if (n <= 0) return '—'
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
-const TAB_ORDER: (MarketCategory | 'All')[] = ['All', 'Perps', 'Spot', 'Outcome', 'Stocks', 'Other']
+const TAB_ORDER: (MarketCategory | 'All')[] = ['All', 'Perps', 'Spot']
 
 export function MarketList({ markets, selected, onSelect }: MarketListProps) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<MarketCategory | 'All'>('All')
 
-  // Only show tabs that have markets
   const available = TAB_ORDER.filter(t => t === 'All' || markets.some(m => m.category === t))
 
   let list = markets.filter(m => {
@@ -39,27 +36,35 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
   })
   list = list.slice().sort((a, b) => b.volume24h - a.volume24h)
 
+  const pairSuffix = (m: UnifiedMarket) => (m.kind === 'spot' ? '/USDC' : '-USDC')
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Search */}
-      <div className="px-2 py-2 border-b border-border-primary flex-shrink-0">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search markets..."
-          className="w-full bg-bg-tertiary border border-border-primary rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-secondary"
-        />
+      <div className="px-3 py-2.5 border-b border-border-primary flex-shrink-0">
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search markets..."
+            className="w-full bg-bg-tertiary border border-border-primary rounded-lg pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-secondary"
+          />
+        </div>
       </div>
 
       {/* Category tabs */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border-primary flex-shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border-primary flex-shrink-0 overflow-x-auto">
         {available.map(c => (
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className={`px-2 py-0.5 text-2xs rounded font-medium whitespace-nowrap transition-colors ${
-              category === c ? 'bg-bg-hover text-text-primary' : 'text-text-muted hover:text-text-secondary'
+            className={`px-3 py-1 text-xs rounded-md font-medium whitespace-nowrap transition-colors ${
+              category === c ? 'text-accent-blue border-b-2 border-accent-blue rounded-none' : 'text-text-muted hover:text-text-secondary'
             }`}
           >
             {c}
@@ -67,48 +72,59 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
         ))}
       </div>
 
-      {/* Column labels */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border-primary flex-shrink-0">
-        <span className="text-2xs text-text-muted uppercase tracking-wider">Market</span>
-        <span className="text-2xs text-text-muted uppercase tracking-wider">Last / 24h</span>
+      {/* Table header */}
+      <div className="grid grid-cols-[1.6fr_1fr_1.3fr_0.9fr_1.1fr_1.1fr] px-3 py-1.5 border-b border-border-primary flex-shrink-0 text-2xs text-text-muted">
+        <span>Symbol</span>
+        <span className="text-right">Last Price</span>
+        <span className="text-right">24h Change</span>
+        <span className="text-right">8h Funding</span>
+        <span className="text-right">Volume</span>
+        <span className="text-right">Open Interest</span>
       </div>
 
-      {/* List */}
+      {/* Rows */}
       <div className="flex-1 overflow-y-auto">
         {list.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-2xs text-text-muted px-3 text-center">
-            No markets
-          </div>
+          <div className="flex items-center justify-center h-full text-xs text-text-muted">No markets</div>
         ) : (
           list.map(m => {
             const isUp = m.change24h >= 0
             const isSelected = m.coin === selected
+            const absChg = m.prevDayPx > 0 ? m.price - m.prevDayPx : 0
             return (
               <button
                 key={m.coin}
                 onClick={() => onSelect(m.coin)}
-                className={`w-full flex items-center justify-between px-2 py-1.5 border-b border-border-primary/40 transition-colors hover:bg-bg-hover text-left ${
-                  isSelected ? 'bg-bg-hover border-l-2 border-l-accent-blue' : ''
+                className={`w-full grid grid-cols-[1.6fr_1fr_1.3fr_0.9fr_1.1fr_1.1fr] items-center px-3 py-2 border-b border-border-primary/40 transition-colors hover:bg-bg-hover text-left ${
+                  isSelected ? 'bg-bg-hover' : ''
                 }`}
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-medium text-text-primary truncate">{m.display}</span>
-                    {m.maxLeverage > 0 && (
-                      <span className="text-[8px] text-text-muted bg-bg-tertiary px-1 rounded leading-tight flex-shrink-0">{m.maxLeverage}x</span>
-                    )}
-                    {m.kind === 'spot' && (
-                      <span className="text-[8px] text-accent-blue bg-bg-tertiary px-1 rounded leading-tight flex-shrink-0">SPOT</span>
-                    )}
-                  </div>
-                  <p className="text-2xs text-text-muted mt-0.5">{fmtVol(m.volume24h)}</p>
+                {/* Symbol */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-sm font-medium text-text-primary truncate">{m.display}{pairSuffix(m)}</span>
+                  {m.maxLeverage > 0 && (
+                    <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none flex-shrink-0">{m.maxLeverage}x</span>
+                  )}
+                  {m.kind === 'spot' && (
+                    <span className="text-[9px] text-accent-blue bg-bg-tertiary px-1 py-0.5 rounded leading-none flex-shrink-0">SPOT</span>
+                  )}
                 </div>
-                <div className="text-right ml-1">
-                  <p className="font-mono text-xs text-text-primary">${fmtPrice(m.price)}</p>
-                  <p className={`text-2xs font-mono mt-0.5 ${isUp ? 'text-long' : 'text-short'}`}>
-                    {isUp ? '+' : ''}{m.change24h.toFixed(2)}%
-                  </p>
-                </div>
+                {/* Last price */}
+                <span className="text-sm font-mono text-text-primary text-right tabular-nums">{fmtPrice(m.price)}</span>
+                {/* 24h change */}
+                <span className={`text-xs font-mono text-right tabular-nums ${isUp ? 'text-long' : 'text-short'}`}>
+                  {absChg !== 0 ? `${isUp ? '+' : ''}${fmtPrice(Math.abs(absChg))} / ` : ''}{isUp ? '+' : ''}{m.change24h.toFixed(2)}%
+                </span>
+                {/* Funding */}
+                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
+                  {m.kind === 'perp' ? `${(m.funding * 100).toFixed(4)}%` : '—'}
+                </span>
+                {/* Volume */}
+                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmtUsd(m.volume24h)}</span>
+                {/* OI */}
+                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
+                  {m.kind === 'perp' ? fmtUsd(m.openInterest * m.price) : '—'}
+                </span>
               </button>
             )
           })

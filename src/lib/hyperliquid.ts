@@ -83,6 +83,16 @@ export async function getUserState(address: string) {
   return info({ type: 'clearinghouseState', user: address })
 }
 
+export interface SpotBalance {
+  coin: string
+  total: string
+  hold: string
+}
+
+export async function getSpotState(address: string): Promise<{ balances: SpotBalance[] }> {
+  return info({ type: 'spotClearinghouseState', user: address })
+}
+
 export async function getOpenOrders(address: string) {
   return info({ type: 'openOrders', user: address })
 }

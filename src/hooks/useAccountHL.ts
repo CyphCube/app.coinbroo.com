@@ -2,27 +2,32 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount } from 'wagmi'
-import { getUserState, getOpenOrders, getUserFills, type AccountState } from '@/lib/hyperliquid'
+import { getUserState, getOpenOrders, getUserFills, getSpotState, type AccountState } from '@/lib/hyperliquid'
 
 export function useAccount_HL() {
   const { address, isConnected } = useAccount()
   const [accountState, setAccountState] = useState<AccountState | null>(null)
   const [openOrders, setOpenOrders] = useState<unknown[]>([])
   const [fills, setFills] = useState<unknown[]>([])
+  const [spotBalances, setSpotBalances] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!address || !isConnected) return
     setLoading(true)
     try {
-      const [state, orders, userFills] = await Promise.all([
+      const [state, orders, userFills, spot] = await Promise.all([
         getUserState(address),
         getOpenOrders(address),
         getUserFills(address),
+        getSpotState(address),
       ])
       setAccountState(state)
       setOpenOrders(orders || [])
       setFills(userFills || [])
+      const balMap: Record<string, number> = {}
+      spot?.balances?.forEach(b => { balMap[b.coin] = parseFloat(b.total) - parseFloat(b.hold) })
+      setSpotBalances(balMap)
     } catch (e) {
       console.error('Failed to fetch account state', e)
     } finally {
@@ -49,6 +54,7 @@ export function useAccount_HL() {
     positions,
     openOrders,
     fills,
+    spotBalances,
     accountValue,
     availableBalance,
     totalPnl,
