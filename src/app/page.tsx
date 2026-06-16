@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { NavBar } from '@/components/layout/NavBar'
 import { TopBar } from '@/components/layout/TopBar'
 import { OrderBook } from '@/components/trading/OrderBook'
 import { TradePanel } from '@/components/trading/TradePanel'
@@ -117,6 +118,7 @@ export default function TradingPage() {
 
   return (
     <div className="flex flex-col h-screen bg-bg-primary overflow-hidden">
+      <NavBar />
       <TopBar
         selectedMarket={selectedCoin}
         markPrice={markPrice}

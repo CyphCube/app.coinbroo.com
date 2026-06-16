@@ -1,13 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
-import { TransferModal } from '@/components/ui/TransferModal'
 import { MarketList } from '@/components/trading/MarketList'
-
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
 function fmt(n: number, decimals = 2) {
   if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'
@@ -47,9 +43,7 @@ interface TopBarProps {
 
 export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, funding, volume24h, openInterest, maxLeverage, markets, onSelectMarket }: TopBarProps) {
   const { isConnected } = useAccount()
-  const { accountValue, availableBalance, totalPnl } = useAccount_HL()
-  const [transferOpen, setTransferOpen] = useState(false)
-  const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
+  const { accountValue, totalPnl } = useAccount_HL()
   const [marketOpen, setMarketOpen] = useState(false)
 
   const isUp = change24h >= 0
@@ -65,37 +59,29 @@ export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, fundin
 
   return (
     <>
-      <header className="h-11 flex items-center gap-0 px-3 bg-bg-secondary border-b border-border-primary flex-shrink-0 overflow-hidden">
-        {/* Logo */}
-        <div className="flex items-center gap-1.5 mr-4 flex-shrink-0">
-          <div className="w-6 h-6 rounded-md bg-accent-blue flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-black tracking-tighter">cb</span>
-          </div>
-          <span className="text-text-primary font-bold text-sm tracking-tight whitespace-nowrap">{APP_NAME}</span>
-        </div>
-
+      <div className="h-12 flex items-center gap-0 px-4 bg-bg-secondary border-b border-border-primary flex-shrink-0 overflow-hidden">
         {/* Market selector + price */}
-        <div className="flex items-center gap-2.5 mr-4 flex-shrink-0 border-r border-border-primary pr-4">
+        <div className="flex items-center gap-3 mr-5 flex-shrink-0 border-r border-border-primary pr-5">
           <button
             onClick={() => setMarketOpen(o => !o)}
-            className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+            className="flex items-center gap-2 hover:bg-bg-hover rounded-md px-2 py-1.5 -mx-2 transition-colors"
           >
-            <span className="text-text-primary font-semibold text-sm">{selectedMarket}-USDC</span>
-            <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none">{maxLeverage}x</span>
-            <svg className={`w-3 h-3 text-text-muted transition-transform ${marketOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+            <span className="text-text-primary font-bold text-base">{selectedMarket}-USDC</span>
+            <span className="text-[10px] text-text-secondary bg-bg-tertiary px-1.5 py-0.5 rounded leading-none">{maxLeverage}x</span>
+            <svg className={`w-3.5 h-3.5 text-text-muted transition-transform ${marketOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <span className={`font-mono text-sm font-semibold ${isUp ? 'text-long' : 'text-short'}`}>
+          <span className={`font-mono text-base font-semibold ${isUp ? 'text-long' : 'text-short'}`}>
             ${fmtPrice(markPrice)}
           </span>
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-5 flex-1 overflow-hidden">
+        <div className="flex items-center gap-6 flex-1 overflow-hidden">
           {stats.map(s => (
             <div key={s.label} className="flex flex-col flex-shrink-0">
-              <span className="text-2xs text-text-muted leading-none mb-1 border-b border-dotted border-border-secondary pb-0.5 w-fit">{s.label}</span>
+              <span className="text-2xs text-text-muted leading-none mb-1.5 border-b border-dotted border-border-secondary pb-0.5 w-fit">{s.label}</span>
               <span className={`text-xs font-mono font-medium leading-none ${s.color}`}>{s.value}</span>
             </div>
           ))}
@@ -103,49 +89,26 @@ export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, fundin
 
         {/* Account info */}
         {isConnected && accountValue > 0 && (
-          <div className="hidden lg:flex items-center gap-4 mx-4 px-4 border-x border-border-primary flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-5 ml-4 pl-5 border-l border-border-primary flex-shrink-0">
             <div className="flex flex-col">
-              <span className="text-2xs text-text-muted leading-none mb-0.5">Balance</span>
+              <span className="text-2xs text-text-muted leading-none mb-1.5">Account Equity</span>
               <span className="text-xs font-mono font-medium text-text-primary leading-none">${accountValue.toFixed(2)}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-2xs text-text-muted leading-none mb-0.5">Unrealized PnL</span>
+              <span className="text-2xs text-text-muted leading-none mb-1.5">Unrealized PnL</span>
               <span className={`text-xs font-mono font-medium leading-none ${totalPnl >= 0 ? 'text-long' : 'text-short'}`}>
                 {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
               </span>
             </div>
           </div>
         )}
-
-        {/* Deposit / Withdraw */}
-        {isConnected && (
-          <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
-            <button
-              onClick={() => { setTransferTab('deposit'); setTransferOpen(true) }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-long hover:bg-long-dim text-white transition-colors"
-            >
-              Deposit
-            </button>
-            <button
-              onClick={() => { setTransferTab('withdraw'); setTransferOpen(true) }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border-primary text-text-secondary hover:bg-bg-hover transition-colors"
-            >
-              Withdraw
-            </button>
-          </div>
-        )}
-
-        {/* Wallet */}
-        <div className="flex-shrink-0">
-          <ConnectButton showBalance={false} chainStatus="none" accountStatus="avatar" />
-        </div>
-      </header>
+      </div>
 
       {/* Market selector dropdown */}
       {marketOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMarketOpen(false)} />
-          <div className="fixed left-[120px] top-11 z-50 w-72 h-[420px] bg-bg-secondary border border-border-primary rounded-b-lg shadow-2xl flex flex-col overflow-hidden">
+          <div className="fixed left-4 top-[88px] z-50 w-72 h-[440px] bg-bg-secondary border border-border-primary rounded-lg shadow-2xl flex flex-col overflow-hidden">
             <MarketList
               markets={markets}
               selected={selectedMarket}
@@ -153,14 +116,6 @@ export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, fundin
             />
           </div>
         </>
-      )}
-
-      {transferOpen && (
-        <TransferModal
-          initialTab={transferTab}
-          availableBalance={availableBalance}
-          onClose={() => setTransferOpen(false)}
-        />
       )}
     </>
   )
