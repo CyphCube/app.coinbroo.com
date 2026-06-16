@@ -5,6 +5,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
 import { TransferModal } from '@/components/ui/TransferModal'
+import { MarketList } from '@/components/trading/MarketList'
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
@@ -22,6 +23,15 @@ function fmtPrice(p: number) {
   return p.toFixed(6)
 }
 
+interface MarketRow {
+  name: string
+  price: number
+  change24h: number
+  volume24h: number
+  funding: number
+  maxLeverage: number
+}
+
 interface TopBarProps {
   selectedMarket: string
   markPrice: number
@@ -30,13 +40,17 @@ interface TopBarProps {
   funding: number
   volume24h: number
   openInterest: number
+  maxLeverage: number
+  markets: MarketRow[]
+  onSelectMarket: (coin: string) => void
 }
 
-export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, funding, volume24h, openInterest }: TopBarProps) {
+export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, funding, volume24h, openInterest, maxLeverage, markets, onSelectMarket }: TopBarProps) {
   const { isConnected } = useAccount()
   const { accountValue, availableBalance, totalPnl } = useAccount_HL()
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
+  const [marketOpen, setMarketOpen] = useState(false)
 
   const isUp = change24h >= 0
   const fundingPositive = funding >= 0
@@ -60,9 +74,18 @@ export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, fundin
           <span className="text-text-primary font-bold text-sm tracking-tight whitespace-nowrap">{APP_NAME}</span>
         </div>
 
-        {/* Market + price */}
+        {/* Market selector + price */}
         <div className="flex items-center gap-2.5 mr-4 flex-shrink-0 border-r border-border-primary pr-4">
-          <span className="text-text-primary font-semibold text-sm">{selectedMarket}-PERP</span>
+          <button
+            onClick={() => setMarketOpen(o => !o)}
+            className="flex items-center gap-1.5 hover:bg-bg-hover rounded px-1.5 py-1 -mx-1.5 transition-colors group"
+          >
+            <span className="text-text-primary font-semibold text-sm">{selectedMarket}-USDC</span>
+            <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none">{maxLeverage}x</span>
+            <svg className={`w-3 h-3 text-text-muted transition-transform ${marketOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <span className={`font-mono text-sm font-semibold ${isUp ? 'text-long' : 'text-short'}`}>
             ${fmtPrice(markPrice)}
           </span>
@@ -117,6 +140,20 @@ export function TopBar({ selectedMarket, markPrice, change24h, prevDayPx, fundin
           <ConnectButton showBalance={false} chainStatus="none" accountStatus="avatar" />
         </div>
       </header>
+
+      {/* Market selector dropdown */}
+      {marketOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMarketOpen(false)} />
+          <div className="fixed left-[120px] top-11 z-50 w-72 h-[420px] bg-bg-secondary border border-border-primary rounded-b-lg shadow-2xl flex flex-col overflow-hidden">
+            <MarketList
+              markets={markets}
+              selected={selectedMarket}
+              onSelect={(c) => { onSelectMarket(c); setMarketOpen(false) }}
+            />
+          </div>
+        </>
+      )}
 
       {transferOpen && (
         <TransferModal

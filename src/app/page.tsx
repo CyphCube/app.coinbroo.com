@@ -5,7 +5,6 @@ import { TopBar } from '@/components/layout/TopBar'
 import { OrderBook } from '@/components/trading/OrderBook'
 import { TradePanel } from '@/components/trading/TradePanel'
 import { Positions } from '@/components/trading/Positions'
-import { MarketList } from '@/components/trading/MarketList'
 import { useHLWebSocket } from '@/hooks/useHLWebSocket'
 import { useAutoDisconnect } from '@/hooks/useAutoDisconnect'
 import { getMetaAndAssetCtxs, getBaseFees } from '@/lib/hyperliquid'
@@ -126,16 +125,23 @@ export default function TradingPage() {
         funding={funding}
         volume24h={volume24h}
         openInterest={openInterest}
+        maxLeverage={currentAsset?.maxLeverage || 50}
+        markets={markets}
+        onSelectMarket={setSelectedCoin}
       />
 
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Market list */}
-        <div className="w-44 flex-shrink-0 border-r border-border-primary hidden lg:flex flex-col">
-          <MarketList markets={markets} selected={selectedCoin} onSelect={setSelectedCoin} />
+        {/* Chart */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <iframe
+            key={selectedCoin}
+            src={`https://www.tradingview.com/widgetembed/?symbol=BYBIT%3A${selectedCoin}USDT.P&interval=15&theme=dark&style=1&locale=en&hide_side_toolbar=0&allow_symbol_change=0`}
+            className="w-full h-full border-0"
+          />
         </div>
 
-        {/* Order book */}
-        <div className="w-52 flex-shrink-0 border-r border-border-primary hidden md:flex flex-col">
+        {/* Order book — right side, like Hyperliquid */}
+        <div className="w-52 flex-shrink-0 border-l border-border-primary hidden md:flex flex-col">
           <OrderBook
             coin={selectedCoin}
             bids={bids}
@@ -144,15 +150,6 @@ export default function TradingPage() {
             spread={spread}
             trades={trades[selectedCoin] || []}
             szDecimals={currentAsset?.szDecimals ?? 2}
-          />
-        </div>
-
-        {/* Chart */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <iframe
-            key={selectedCoin}
-            src={`https://www.tradingview.com/widgetembed/?symbol=BYBIT%3A${selectedCoin}USDT.P&interval=15&theme=dark&style=1&locale=en&hide_side_toolbar=0&allow_symbol_change=0`}
-            className="w-full h-full border-0"
           />
         </div>
 
