@@ -12,12 +12,11 @@ import { getMetaAndAssetCtxs, getBaseFees } from '@/lib/hyperliquid'
 import type { OrderBook as OBType, Trade } from '@/hooks/useHLWebSocket'
 import type { AssetCtx } from '@/lib/hyperliquid'
 
-const DEFAULT_COINS = ['BTC', 'ETH', 'SOL', 'ARB', 'AVAX', 'HYPE', 'SUI', 'WIF', 'PEPE', 'DOGE']
-
 interface MetaUniverse {
   name: string
   szDecimals: number
   maxLeverage: number
+  isDelisted?: boolean
 }
 
 interface Meta {
@@ -36,20 +35,26 @@ export default function TradingPage() {
   useAutoDisconnect()
 
   useEffect(() => {
-    getMetaAndAssetCtxs().then(([m, ctxs]) => {
-      if (m?.universe) setMeta(m)
-      const ctxMap: Record<string, AssetCtx> = {}
-      const seedMids: Record<string, number> = {}
-      m.universe.forEach((asset, i) => {
-        if (ctxs[i]) {
-          ctxMap[asset.name] = ctxs[i]
-          seedMids[asset.name] = parseFloat(ctxs[i].markPx)
-        }
+    function loadCtxs(seed: boolean) {
+      getMetaAndAssetCtxs().then(([m, ctxs]) => {
+        if (m?.universe) setMeta(m)
+        const ctxMap: Record<string, AssetCtx> = {}
+        const seedMids: Record<string, number> = {}
+        m.universe.forEach((asset, i) => {
+          if (ctxs[i]) {
+            ctxMap[asset.name] = ctxs[i]
+            seedMids[asset.name] = parseFloat(ctxs[i].markPx)
+          }
+        })
+        setAssetCtxMap(ctxMap)
+        if (seed) setMids(prev => ({ ...seedMids, ...prev }))
       })
-      setAssetCtxMap(ctxMap)
-      setMids(seedMids)
-    })
+    }
+    loadCtxs(true)
     getBaseFees().then(setBaseFees)
+    // Refresh funding/volume/OI every 15s (prices come live via WS)
+    const interval = setInterval(() => loadCtxs(false), 15000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleOrderBook = useCallback((data: OBType) => {
@@ -75,7 +80,7 @@ export default function TradingPage() {
     })
   }, [])
 
-  useHLWebSocket({ coins: DEFAULT_COINS, onOrderBook: handleOrderBook, onTrade: handleTrade, onAllMids: handleAllMids })
+  useHLWebSocket({ activeCoin: selectedCoin, onOrderBook: handleOrderBook, onTrade: handleTrade, onAllMids: handleAllMids })
 
   const currentAsset = meta.universe.find(u => u.name === selectedCoin)
   const currentCtx = assetCtxMap[selectedCoin]
@@ -86,9 +91,10 @@ export default function TradingPage() {
   const volume24h = currentCtx ? parseFloat(currentCtx.dayNtlVlm) : 0
   const openInterest = currentCtx ? parseFloat(currentCtx.openInterest) : 0
 
-  const markets = DEFAULT_COINS
-    .filter(c => mids[c])
-    .map(c => {
+  const markets = meta.universe
+    .filter(u => mids[u.name] && !u.isDelisted)
+    .map(u => {
+      const c = u.name
       const ctx = assetCtxMap[c]
       const prev = ctx ? parseFloat(ctx.prevDayPx) : 0
       const price = mids[c]
@@ -98,8 +104,10 @@ export default function TradingPage() {
         change24h: prev > 0 ? ((price - prev) / prev) * 100 : 0,
         volume24h: ctx ? parseFloat(ctx.dayNtlVlm) : 0,
         funding: ctx ? parseFloat(ctx.funding) : 0,
+        maxLeverage: u.maxLeverage,
       }
     })
+    .sort((a, b) => b.volume24h - a.volume24h)
 
   const currentOB = orderBooks[selectedCoin]
   const bids = currentOB?.levels?.[0] || []
