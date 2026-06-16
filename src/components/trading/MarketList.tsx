@@ -20,6 +20,11 @@ function fmtUsd(n: number) {
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+// Volume always shows a dollar figure, including $0
+function fmtVol(n: number) {
+  return '$' + Math.max(0, n).toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
 const TAB_ORDER: (MarketCategory | 'All')[] = ['All', 'Perps', 'Spot']
 
 export function MarketList({ markets, selected, onSelect }: MarketListProps) {
@@ -128,7 +133,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                   </span>
                 )}
                 {/* Volume */}
-                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmtUsd(m.volume24h)}</span>
+                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmtVol(m.volume24h)}</span>
                 {/* Market Cap (spot) or Open Interest (perps) */}
                 <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
                   {spotView
