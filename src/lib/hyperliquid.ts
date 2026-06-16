@@ -55,6 +55,7 @@ export interface SpotAssetCtx {
   markPx: string
   midPx: string
   coin: string          // e.g. "PURR/USDC" or "@107"
+  circulatingSupply: string
 }
 
 export async function getSpotMetaAndAssetCtxs(): Promise<[{ tokens: SpotToken[]; universe: SpotPair[] }, SpotAssetCtx[]]> {

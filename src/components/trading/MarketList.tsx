@@ -38,6 +38,12 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
 
   const pairSuffix = (m: UnifiedMarket) => (m.kind === 'spot' ? '/USDC' : '-USDC')
 
+  // Spot view shows Market Cap; perps/all view shows Funding + Open Interest
+  const spotView = category === 'Spot'
+  const gridCols = spotView
+    ? 'grid-cols-[1.6fr_1fr_1.3fr_1.1fr_1.3fr]'
+    : 'grid-cols-[1.6fr_1fr_1.3fr_0.9fr_1.1fr_1.1fr]'
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Search */}
@@ -73,13 +79,13 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
       </div>
 
       {/* Table header */}
-      <div className="grid grid-cols-[1.6fr_1fr_1.3fr_0.9fr_1.1fr_1.1fr] px-3 py-1.5 border-b border-border-primary flex-shrink-0 text-2xs text-text-muted">
+      <div className={`grid ${gridCols} px-3 py-1.5 border-b border-border-primary flex-shrink-0 text-2xs text-text-muted`}>
         <span>Symbol</span>
         <span className="text-right">Last Price</span>
         <span className="text-right">24h Change</span>
-        <span className="text-right">8h Funding</span>
+        {!spotView && <span className="text-right">8h Funding</span>}
         <span className="text-right">Volume</span>
-        <span className="text-right">Open Interest</span>
+        <span className="text-right">{spotView ? 'Market Cap' : 'Open Interest'}</span>
       </div>
 
       {/* Rows */}
@@ -95,7 +101,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
               <button
                 key={m.coin}
                 onClick={() => onSelect(m.coin)}
-                className={`w-full grid grid-cols-[1.6fr_1fr_1.3fr_0.9fr_1.1fr_1.1fr] items-center px-3 py-2 border-b border-border-primary/40 transition-colors hover:bg-bg-hover text-left ${
+                className={`w-full grid ${gridCols} items-center px-3 py-2 border-b border-border-primary/40 transition-colors hover:bg-bg-hover text-left ${
                   isSelected ? 'bg-bg-hover' : ''
                 }`}
               >
@@ -115,15 +121,19 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                 <span className={`text-xs font-mono text-right tabular-nums ${isUp ? 'text-long' : 'text-short'}`}>
                   {absChg !== 0 ? `${isUp ? '+' : ''}${fmtPrice(Math.abs(absChg))} / ` : ''}{isUp ? '+' : ''}{m.change24h.toFixed(2)}%
                 </span>
-                {/* Funding */}
-                <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
-                  {m.kind === 'perp' ? `${(m.funding * 100).toFixed(4)}%` : '—'}
-                </span>
+                {/* Funding — perps view only */}
+                {!spotView && (
+                  <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
+                    {m.kind === 'perp' ? `${(m.funding * 100).toFixed(4)}%` : '—'}
+                  </span>
+                )}
                 {/* Volume */}
                 <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmtUsd(m.volume24h)}</span>
-                {/* OI */}
+                {/* Market Cap (spot) or Open Interest (perps) */}
                 <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
-                  {m.kind === 'perp' ? fmtUsd(m.openInterest * m.price) : '—'}
+                  {spotView
+                    ? (m.marketCap ? fmtUsd(m.marketCap) : '—')
+                    : (m.kind === 'perp' ? fmtUsd(m.openInterest * m.price) : '—')}
                 </span>
               </button>
             )

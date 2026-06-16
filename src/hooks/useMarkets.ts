@@ -25,6 +25,7 @@ export interface UnifiedMarket {
   hasTvChart: boolean   // TradingView/Bybit symbol available
   kind: 'perp' | 'spot'
   baseToken?: string    // spot base token name (e.g. "PURR")
+  marketCap?: number    // spot only
 }
 
 function num(s: string | undefined) { return s ? parseFloat(s) : 0 }
@@ -101,6 +102,7 @@ export function useMarkets() {
             hasTvChart: false,
             kind: 'spot',
             baseToken: base,
+            marketCap: num(c.circulatingSupply) * price,
           })
         })
       } catch { /* ignore */ }
