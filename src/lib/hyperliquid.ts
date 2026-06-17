@@ -40,6 +40,7 @@ export interface SpotToken {
   name: string
   index: number
   szDecimals: number
+  fullName?: string | null
 }
 
 export interface SpotPair {

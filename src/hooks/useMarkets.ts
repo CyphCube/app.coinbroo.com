@@ -74,8 +74,8 @@ export function useMarkets() {
       // NOTE: spotCtxs is NOT positionally aligned with universe; match by coin id.
       try {
         const [spotMeta, spotCtxs] = await getSpotMetaAndAssetCtxs()
-        const tokenByIndex: Record<number, { name: string; szDecimals: number }> = {}
-        spotMeta.tokens.forEach(t => { tokenByIndex[t.index] = { name: t.name, szDecimals: t.szDecimals } })
+        const tokenByIndex: Record<number, { name: string; szDecimals: number; fullName?: string | null }> = {}
+        spotMeta.tokens.forEach(t => { tokenByIndex[t.index] = { name: t.name, szDecimals: t.szDecimals, fullName: t.fullName } })
         const ctxByCoin: Record<string, typeof spotCtxs[number]> = {}
         spotCtxs.forEach(c => { if (c && c.coin) ctxByCoin[c.coin] = c })
 
@@ -89,9 +89,13 @@ export function useMarkets() {
           const baseTok = tokenByIndex[pair.tokens[0]]
           const base = baseTok?.name || pair.name.split('/')[0]
           const isCanonical = (pair as { isCanonical?: boolean }).isCanonical ?? false
+          // Unit-bridged assets (fullName "Unit Bitcoin", …) show their original
+          // ticker like Hyperliquid: UBTC → BTC, UETH → ETH, USOL → SOL.
+          const isUnit = baseTok?.fullName?.startsWith('Unit ') ?? false
+          const display = isUnit ? base.replace(/^U+/, '') : base
           results.push({
             coin: coinKey,
-            display: base,
+            display,
             category: 'Spot',
             price,
             prevDayPx: prev,
