@@ -126,8 +126,12 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
               <button
                 key={opt}
                 onClick={() => setStrict(isStrict)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  active ? 'bg-accent-blue text-bg-primary' : 'text-text-muted hover:text-text-secondary'
+                className={`w-16 py-1.5 text-xs font-semibold rounded-md text-center transition-colors ${
+                  active
+                    ? isStrict
+                      ? 'bg-accent-blue text-bg-primary'
+                      : 'bg-short text-white'
+                    : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
                 {opt}
