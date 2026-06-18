@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
 import { MarketList } from '@/components/trading/MarketList'
+import { TokenLogo } from '@/components/ui/TokenLogo'
 import type { UnifiedMarket } from '@/hooks/useMarkets'
 
 function fmt(n: number, decimals = 2) {
@@ -26,32 +27,6 @@ interface TopBarProps {
   change24h: number
   markets: UnifiedMarket[]
   onSelectMarket: (coin: string) => void
-}
-
-// Round token logo from Hyperliquid's coin-icon CDN, with a lettered fallback.
-function TokenLogo({ symbol, size }: { symbol: string; size: number }) {
-  const [errored, setErrored] = useState(false)
-  if (!symbol || errored) {
-    return (
-      <div
-        style={{ width: size, height: size, fontSize: size * 0.42 }}
-        className="rounded-full bg-bg-tertiary flex items-center justify-center font-bold text-text-secondary flex-shrink-0"
-      >
-        {symbol ? symbol[0] : '?'}
-      </div>
-    )
-  }
-  return (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img
-      src={`https://app.hyperliquid.xyz/coins/${symbol}.svg`}
-      alt={symbol}
-      width={size}
-      height={size}
-      onError={() => setErrored(true)}
-      className="rounded-full bg-bg-tertiary flex-shrink-0"
-    />
-  )
 }
 
 export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }: TopBarProps) {

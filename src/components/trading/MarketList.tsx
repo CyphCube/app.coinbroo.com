@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { UnifiedMarket, MarketCategory } from '@/hooks/useMarkets'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { TokenLogo } from '@/components/ui/TokenLogo'
 
 interface MarketListProps {
   markets: UnifiedMarket[]
@@ -210,16 +211,19 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
               >
                 {isMobile ? (
                   <>
-                    {/* Symbol + badges, stacked */}
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <span className="text-md font-medium text-text-primary truncate">{m.display}{pairSuffix(m)}</span>
-                      <div className="flex items-center gap-1">
-                        {m.maxLeverage > 0 && (
-                          <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none">{m.maxLeverage}x</span>
-                        )}
-                        {m.kind === 'spot' && (
-                          <span className="text-[9px] text-accent-blue bg-bg-tertiary px-1 py-0.5 rounded leading-none">SPOT</span>
-                        )}
+                    {/* Logo + symbol + badges, stacked */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <TokenLogo symbol={m.display} size={28} />
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-md font-medium text-text-primary truncate">{m.display}{pairSuffix(m)}</span>
+                        <div className="flex items-center gap-1">
+                          {m.maxLeverage > 0 && (
+                            <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none">{m.maxLeverage}x</span>
+                          )}
+                          {m.kind === 'spot' && (
+                            <span className="text-[9px] text-accent-blue bg-bg-tertiary px-1 py-0.5 rounded leading-none">SPOT</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     {/* Volume (compact) */}
@@ -235,7 +239,8 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                 ) : (
                   <>
                     {/* Symbol */}
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <TokenLogo symbol={m.display} size={20} />
                       <span className="text-sm font-medium text-text-primary truncate">{m.display}{pairSuffix(m)}</span>
                       {m.maxLeverage > 0 && (
                         <span className="text-[9px] text-text-secondary bg-bg-tertiary px-1 py-0.5 rounded leading-none flex-shrink-0">{m.maxLeverage}x</span>
