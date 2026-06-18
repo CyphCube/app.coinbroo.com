@@ -33,7 +33,7 @@ export function Chart({ coin, label }: ChartProps) {
     if (!el) return
 
     const chart = createChart(el, {
-      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#7d8a8c', fontSize: 11, attributionLogo: false },
+      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#7d8a8c', fontSize: 11, attributionLogo: true },
       grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
       rightPriceScale: { borderColor: '#1f2628' },
       timeScale: { borderColor: '#1f2628', timeVisible: true, secondsVisible: false },
@@ -116,25 +116,8 @@ export function Chart({ coin, label }: ChartProps) {
         </div>
       </div>
 
-      {/* Chart canvas */}
-      <div className="relative flex-1 min-h-0">
-        <div ref={containerRef} className="absolute inset-0" />
-
-        {/* TradingView attribution — required, styled like Hyperliquid's badge */}
-        <a
-          href="https://www.tradingview.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors"
-        >
-          <svg className="w-3.5 h-3.5 text-text-primary" viewBox="0 0 36 28" fill="currentColor" aria-hidden="true">
-            <path d="M14 22H7V11H0V4h14v18z" />
-            <path d="M28.5 22a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11z" />
-            <path d="M21 22h-6l7.5-18h6L21 22z" />
-          </svg>
-          <span className="text-xs font-semibold text-text-primary whitespace-nowrap">Chart by TradingView</span>
-        </a>
-      </div>
+      {/* Chart canvas — native TradingView attribution logo (expands on hover) */}
+      <div ref={containerRef} className="flex-1 min-h-0" />
     </div>
   )
 }
