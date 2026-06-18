@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { NavBar } from '@/components/layout/NavBar'
 import { TopBar } from '@/components/layout/TopBar'
+import { Footer } from '@/components/layout/Footer'
 import { Chart } from '@/components/trading/Chart'
 import { OrderBook } from '@/components/trading/OrderBook'
 import { TradePanel } from '@/components/trading/TradePanel'
@@ -128,6 +129,8 @@ export default function TradingPage() {
       <div className="border-t border-border-primary bg-bg-secondary">
         <Positions markPrices={mids} assetIndexMap={assetIndexMap} />
       </div>
+
+      <Footer />
     </div>
   )
 }
