@@ -2,6 +2,12 @@
 
 import { useState } from 'react'
 
+// Thousand-denominated perps (kPEPE, kBONK, kSHIB…) have no icon of their own;
+// like Hyperliquid, use the underlying token's icon (kPEPE → PEPE).
+function iconSymbol(symbol: string): string {
+  return /^k[A-Z]/.test(symbol) ? symbol.slice(1) : symbol
+}
+
 // Round token logo from Hyperliquid's coin-icon CDN (the same icons Hyperliquid
 // itself uses), with a lettered fallback when no icon is available.
 export function TokenLogo({ symbol, size }: { symbol: string; size: number }) {
@@ -30,7 +36,7 @@ export function TokenLogo({ symbol, size }: { symbol: string; size: number }) {
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
       key={symbol}
-      src={`https://app.hyperliquid.xyz/coins/${symbol}.svg`}
+      src={`https://app.hyperliquid.xyz/coins/${iconSymbol(symbol)}.svg`}
       alt={symbol}
       width={size}
       height={size}
