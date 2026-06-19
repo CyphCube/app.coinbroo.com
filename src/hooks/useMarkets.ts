@@ -26,6 +26,7 @@ export interface UnifiedMarket {
   hasTvChart: boolean   // TradingView/Bybit symbol available
   kind: 'perp' | 'spot'
   baseToken?: string    // spot base token name (e.g. "PURR")
+  baseTokenIndex?: number // spot base token index (distinguishes impersonators)
   quoteToken: string    // quote token name (perps: "USDC"; spot: USDC/USDT0/USDH/…)
   marketCap?: number    // spot only
   verified: boolean     // passes Strict filter (perp, HL-canonical, or Coinbroo-approved)
@@ -126,6 +127,7 @@ export function useMarkets() {
             hasTvChart: false,
             kind: 'spot',
             baseToken: base,
+            baseTokenIndex: pair.tokens[0],
             quoteToken,
             marketCap,
             verified: isCanonical || COINBROO_VERIFIED_SPOT.has(base),
@@ -133,18 +135,18 @@ export function useMarkets() {
         })
       } catch { /* ignore */ }
 
-      // The same spot token is often listed against several quote tokens
-      // (e.g. HYPE vs USDC / USDT0 / USDH / USDE). For the Strict list, keep only
-      // the primary pair per token (highest 24h volume — usually the USDC pair)
-      // and demote the alt-quote pairs so they appear in "All" but not "Strict".
-      const bestVerifiedSpot: Record<string, UnifiedMarket> = {}
+      // Hyperliquid allows impersonator tokens that reuse a ticker (a *different*
+      // token index with the same name). For Strict, keep only the genuine token
+      // per name — the one with the highest 24h volume — but keep ALL of that
+      // token's quote pairs (HYPE/USDC, HYPE/USDT, HYPE/USDE…), like Hyperliquid.
+      const genuineIndexByName: Record<string, { tokenIndex: number; vol: number }> = {}
       for (const m of results) {
-        if (m.kind !== 'spot' || !m.verified) continue
-        const best = bestVerifiedSpot[m.display]
-        if (!best || m.volume24h > best.volume24h) bestVerifiedSpot[m.display] = m
+        if (m.kind !== 'spot' || !m.verified || m.baseTokenIndex === undefined) continue
+        const cur = genuineIndexByName[m.display]
+        if (!cur || m.volume24h > cur.vol) genuineIndexByName[m.display] = { tokenIndex: m.baseTokenIndex, vol: m.volume24h }
       }
       for (const m of results) {
-        if (m.kind === 'spot' && m.verified && bestVerifiedSpot[m.display] !== m) {
+        if (m.kind === 'spot' && m.verified && m.baseTokenIndex !== genuineIndexByName[m.display]?.tokenIndex) {
           m.verified = false
         }
       }
