@@ -19,7 +19,7 @@ export function TokenLogo({ symbol, size }: { symbol: string; size: number }) {
     return (
       <div
         style={{ width: size, height: size, fontSize: size * 0.42 }}
-        className="rounded-full bg-bg-tertiary flex items-center justify-center font-bold text-text-secondary flex-shrink-0"
+        className="rounded-full bg-white flex items-center justify-center font-bold text-bg-primary flex-shrink-0"
       >
         {symbol ? symbol[0] : '?'}
       </div>
@@ -35,7 +35,7 @@ export function TokenLogo({ symbol, size }: { symbol: string; size: number }) {
       width={size}
       height={size}
       onError={() => setErrored(true)}
-      className="rounded-full flex-shrink-0"
+      className="rounded-full bg-white flex-shrink-0"
     />
   )
 }
