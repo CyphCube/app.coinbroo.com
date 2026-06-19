@@ -102,7 +102,9 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
     const matchesSearch = m.display.toLowerCase().includes(q) || m.coin.toLowerCase().includes(q)
     // Strict shows only verified markets (perps, HL-canonical, or Coinbroo-approved)
     const matchesStrict = !strict || m.verified
-    return matchesCat && matchesSearch && matchesStrict
+    // Hide inactive ($0 24h volume) spot pairs, like Hyperliquid
+    const matchesActive = m.kind !== 'spot' || m.volume24h > 0
+    return matchesCat && matchesSearch && matchesStrict && matchesActive
   })
   list = list.slice().sort((a, b) => {
     const va = sortVal(a, sortKey)
