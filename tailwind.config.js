@@ -24,8 +24,8 @@ module.exports = {
           muted: '#5a6668',
         },
         accent: {
-          blue: '#50d2c1',
-          'blue-dim': '#2aa893',
+          blue: '#1EBCAD',
+          'blue-dim': '#179C8F',
         },
         long: '#1fb98a',
         'long-dim': '#178a67',
