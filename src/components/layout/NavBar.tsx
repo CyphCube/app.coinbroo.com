@@ -5,14 +5,19 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
 import { TransferModal } from '@/components/ui/TransferModal'
+import { NumberFormatMenu } from '@/components/layout/NumberFormatMenu'
+import { SettingsMenu } from '@/components/layout/SettingsMenu'
+import { useTranslation } from '@/hooks/useTranslation'
+import type { TranslationKey } from '@/lib/translations'
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
-const NAV_ITEMS = ['Trade', 'Portfolio', 'Vaults', 'Referrals', 'Leaderboard']
+const NAV_ITEMS: TranslationKey[] = ['nav.trade', 'nav.portfolio', 'nav.vaults', 'nav.referrals', 'nav.leaderboard']
 
 export function NavBar() {
   const { isConnected } = useAccount()
   const { availableBalance } = useAccount_HL()
+  const { t } = useTranslation()
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -47,7 +52,7 @@ export function NavBar() {
                 i === 0 ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
               }`}
             >
-              {item}
+              {t(item)}
             </button>
           ))}
         </nav>
@@ -61,19 +66,69 @@ export function NavBar() {
               onClick={() => { setTransferTab('deposit'); setTransferOpen(true) }}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-long hover:bg-long-dim text-bg-primary transition-colors"
             >
-              Deposit
+              {t('nav.deposit')}
             </button>
             <button
               onClick={() => { setTransferTab('withdraw'); setTransferOpen(true) }}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-border-primary text-text-secondary hover:bg-bg-hover transition-colors"
             >
-              Withdraw
+              {t('nav.withdraw')}
             </button>
           </div>
         )}
 
-        {/* Wallet */}
-        <ConnectButton showBalance={false} chainStatus="none" accountStatus="avatar" />
+        {/* Wallet — custom-styled to match the app's compact theme */}
+        <div className="flex items-center gap-2">
+          <ConnectButton.Custom>
+            {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
+              const ready = mounted && authenticationStatus !== 'loading'
+              const connected = ready && account && chain && (authenticationStatus === 'authenticated' || !authenticationStatus)
+
+              if (!ready) {
+                return <div className="w-[110px] h-[30px]" aria-hidden />
+              }
+
+              if (!connected) {
+                return (
+                  <button
+                    onClick={openConnectModal}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-blue hover:bg-accent-blue-dim text-bg-primary transition-colors whitespace-nowrap"
+                  >
+                    {t('nav.connect')}
+                  </button>
+                )
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <button
+                    onClick={openChainModal}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-short/40 text-short hover:bg-short/10 transition-colors whitespace-nowrap"
+                  >
+                    {t('nav.wrongNetwork')}
+                  </button>
+                )
+              }
+
+              return (
+                <button
+                  onClick={openAccountModal}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-bg-tertiary text-text-primary hover:bg-bg-hover transition-colors"
+                >
+                  {account.ensAvatar ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={account.ensAvatar} alt="" className="w-4 h-4 rounded-full" />
+                  ) : (
+                    <span className="w-4 h-4 rounded-full bg-accent-blue flex-shrink-0" />
+                  )}
+                  <span className="font-mono">{account.displayName}</span>
+                </button>
+              )
+            }}
+          </ConnectButton.Custom>
+          <NumberFormatMenu />
+          <SettingsMenu />
+        </div>
       </header>
 
       {/* Mobile nav menu */}
@@ -89,7 +144,7 @@ export function NavBar() {
                   i === 0 ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
-                {item}
+                {t(item)}
               </button>
             ))}
           </nav>

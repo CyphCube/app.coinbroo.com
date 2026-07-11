@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import type { OrderBookLevel, Trade } from '@/hooks/useHLWebSocket'
+import { useSettings } from '@/hooks/useSettings'
+import { applyNumberFormat } from '@/lib/numberFormat'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface OrderBookProps {
   coin: string
@@ -27,7 +30,7 @@ function fmtSize(sz: number) {
   return sz.toFixed(4)
 }
 
-function OBRow({ px, sz, total, side, maxCum, cum, onPriceClick }: {
+function OBRow({ px, sz, total, side, maxCum, cum, onPriceClick, fmt }: {
   px: number
   sz: number
   total: number
@@ -35,6 +38,7 @@ function OBRow({ px, sz, total, side, maxCum, cum, onPriceClick }: {
   maxCum: number
   cum: number
   onPriceClick?: (px: number) => void
+  fmt: (s: string) => string
 }) {
   const pct = maxCum > 0 ? (cum / maxCum) * 100 : 0
   const isBid = side === 'bid'
@@ -47,15 +51,18 @@ function OBRow({ px, sz, total, side, maxCum, cum, onPriceClick }: {
         className={`absolute top-0 bottom-0 left-0 opacity-[0.13] ${isBid ? 'bg-long' : 'bg-short'}`}
         style={{ width: `${pct}%` }}
       />
-      <span className={`font-mono z-10 tabular-nums ${isBid ? 'text-long' : 'text-short'}`}>{fmtPrice(px)}</span>
-      <span className="font-mono z-10 text-text-secondary tabular-nums text-right">{fmtSize(sz)}</span>
-      <span className="font-mono z-10 text-text-muted tabular-nums text-right">{fmtSize(total)}</span>
+      <span className={`font-mono z-10 tabular-nums ${isBid ? 'text-long' : 'text-short'}`}>{fmt(fmtPrice(px))}</span>
+      <span className="font-mono z-10 text-text-secondary tabular-nums text-right">{fmt(fmtSize(sz))}</span>
+      <span className="font-mono z-10 text-text-muted tabular-nums text-right">{fmt(fmtSize(total))}</span>
     </div>
   )
 }
 
 export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecimals, onPriceClick }: OrderBookProps) {
   const [tab, setTab] = useState<'book' | 'trades'>('book')
+  const { settings } = useSettings()
+  const fmt = (s: string) => applyNumberFormat(s, settings.numberFormat)
+  const { t } = useTranslation()
   const N = 11
 
   const { askRows, bidRows, maxCum } = useMemo(() => {
@@ -89,7 +96,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
             tab === 'book' ? 'text-text-primary border-b-2 border-accent-blue -mb-px' : 'text-text-muted hover:text-text-secondary'
           }`}
         >
-          Order Book
+          {t('orderBook.orderBook')}
         </button>
         <button
           onClick={() => setTab('trades')}
@@ -97,7 +104,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
             tab === 'trades' ? 'text-text-primary border-b-2 border-accent-blue -mb-px' : 'text-text-muted hover:text-text-secondary'
           }`}
         >
-          Trades
+          {t('orderBook.trades')}
         </button>
       </div>
 
@@ -105,30 +112,30 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
         <div className="flex flex-col h-full overflow-hidden">
           {/* Column headers */}
           <div className="grid grid-cols-3 px-2 py-1 border-b border-border-primary flex-shrink-0">
-            <span className="text-2xs text-text-muted">Price</span>
-            <span className="text-2xs text-text-muted text-right">Size ({coin})</span>
-            <span className="text-2xs text-text-muted text-right">Total</span>
+            <span className="text-2xs text-text-muted">{t('orderBook.price')}</span>
+            <span className="text-2xs text-text-muted text-right">{t('orderBook.size')} ({coin})</span>
+            <span className="text-2xs text-text-muted text-right">{t('orderBook.total')}</span>
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Asks */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {askRows.map((r, i) => (
-                <OBRow key={`ask-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="ask" maxCum={maxCum} onPriceClick={onPriceClick} />
+                <OBRow key={`ask-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="ask" maxCum={maxCum} onPriceClick={onPriceClick} fmt={fmt} />
               ))}
             </div>
 
             {/* Spread row */}
             <div className="grid grid-cols-3 px-2 py-1 border-y border-border-primary bg-bg-tertiary flex-shrink-0 text-2xs">
-              <span className="text-text-secondary font-medium">Spread</span>
-              <span className="font-mono text-text-secondary text-right tabular-nums">{spread > 0 ? fmtPrice(spread) : '—'}</span>
+              <span className="text-text-secondary font-medium">{t('orderBook.spread')}</span>
+              <span className="font-mono text-text-secondary text-right tabular-nums">{spread > 0 ? fmt(fmtPrice(spread)) : '—'}</span>
               <span className="font-mono text-text-muted text-right tabular-nums">{spreadPct}%</span>
             </div>
 
             {/* Bids */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {bidRows.map((r, i) => (
-                <OBRow key={`bid-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="bid" maxCum={maxCum} onPriceClick={onPriceClick} />
+                <OBRow key={`bid-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="bid" maxCum={maxCum} onPriceClick={onPriceClick} fmt={fmt} />
               ))}
             </div>
           </div>
@@ -137,20 +144,20 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
         /* Trades feed */
         <div className="flex flex-col h-full overflow-hidden">
           <div className="grid grid-cols-3 px-2 py-1 border-b border-border-primary flex-shrink-0">
-            <span className="text-2xs text-text-muted">Price</span>
-            <span className="text-2xs text-text-muted text-right">Size ({coin})</span>
-            <span className="text-2xs text-text-muted text-right">Time</span>
+            <span className="text-2xs text-text-muted">{t('orderBook.price')}</span>
+            <span className="text-2xs text-text-muted text-right">{t('orderBook.size')} ({coin})</span>
+            <span className="text-2xs text-text-muted text-right">{t('orderBook.time')}</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {trades.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-2xs text-text-muted">No recent trades</div>
+              <div className="flex items-center justify-center h-full text-2xs text-text-muted">{t('orderBook.noRecentTrades')}</div>
             ) : (
               trades.map((t, i) => {
                 const isBuy = t.side === 'B'
                 return (
                   <div key={`${t.tid}-${i}`} className="grid grid-cols-3 px-2 py-[2.5px] text-2xs hover:bg-bg-hover">
-                    <span className={`font-mono tabular-nums ${isBuy ? 'text-long' : 'text-short'}`}>{fmtPrice(parseFloat(t.px))}</span>
-                    <span className="font-mono text-text-secondary tabular-nums text-right">{fmtSize(parseFloat(t.sz))}</span>
+                    <span className={`font-mono tabular-nums ${isBuy ? 'text-long' : 'text-short'}`}>{fmt(fmtPrice(parseFloat(t.px)))}</span>
+                    <span className="font-mono text-text-secondary tabular-nums text-right">{fmt(fmtSize(parseFloat(t.sz)))}</span>
                     <span className="font-mono text-text-muted tabular-nums text-right">{new Date(t.time).toLocaleTimeString('en-US', { hour12: false })}</span>
                   </div>
                 )

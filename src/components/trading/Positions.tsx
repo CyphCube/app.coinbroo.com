@@ -6,6 +6,9 @@ import { postExchange } from '@/lib/hyperliquid'
 import { signOrder } from '@/lib/signing'
 import { useState } from 'react'
 import type { Position } from '@/lib/hyperliquid'
+import { useSettings } from '@/hooks/useSettings'
+import { applyNumberFormat } from '@/lib/numberFormat'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface PositionsProps {
   markPrices: Record<string, number>
@@ -18,12 +21,14 @@ function fmtPrice(p: number) {
   return p.toFixed(6)
 }
 
-function PositionRow({ pos, markPrice, assetIndex, walletClient, onClose }: {
+function PositionRow({ pos, markPrice, assetIndex, walletClient, onClose, fmt, hidePnl }: {
   pos: Position
   markPrice: number
   assetIndex: number
   walletClient: unknown
   onClose: () => void
+  fmt: (s: string) => string
+  hidePnl: boolean
 }) {
   const size = parseFloat(pos.szi)
   const entry = parseFloat(pos.entryPx)
@@ -32,6 +37,7 @@ function PositionRow({ pos, markPrice, assetIndex, walletClient, onClose }: {
   const liq = pos.liquidationPx ? parseFloat(pos.liquidationPx) : null
   const isLong = size > 0
   const [closing, setClosing] = useState(false)
+  const { t } = useTranslation()
 
   async function closePosition() {
     if (!walletClient) return
@@ -58,18 +64,22 @@ function PositionRow({ pos, markPrice, assetIndex, walletClient, onClose }: {
       <td className="px-3 py-2 font-medium text-text-primary whitespace-nowrap">{pos.coin}-PERP</td>
       <td className="px-3 py-2">
         <span className={`px-1.5 py-0.5 rounded text-2xs font-semibold ${isLong ? 'bg-long/15 text-long' : 'bg-short/15 text-short'}`}>
-          {isLong ? 'Long' : 'Short'}
+          {isLong ? t('positions.long') : t('positions.short')}
         </span>
       </td>
-      <td className="px-3 py-2 font-mono text-text-secondary tabular-nums">{Math.abs(size).toFixed(4)}</td>
-      <td className="px-3 py-2 font-mono text-text-secondary tabular-nums">${fmtPrice(entry)}</td>
-      <td className="px-3 py-2 font-mono text-text-primary tabular-nums">${fmtPrice(markPrice)}</td>
+      <td className="px-3 py-2 font-mono text-text-secondary tabular-nums">{fmt(Math.abs(size).toFixed(4))}</td>
+      <td className="px-3 py-2 font-mono text-text-secondary tabular-nums">${fmt(fmtPrice(entry))}</td>
+      <td className="px-3 py-2 font-mono text-text-primary tabular-nums">${fmt(fmtPrice(markPrice))}</td>
       <td className="px-3 py-2 font-mono text-short tabular-nums">
-        {liq ? `$${fmtPrice(liq)}` : '—'}
+        {liq ? `$${fmt(fmtPrice(liq))}` : '—'}
       </td>
       <td className={`px-3 py-2 font-mono font-medium tabular-nums ${pnl >= 0 ? 'text-long' : 'text-short'}`}>
-        {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-        <span className="text-2xs ml-1 opacity-60">({roe >= 0 ? '+' : ''}{roe.toFixed(1)}%)</span>
+        {hidePnl ? '••••' : (
+          <>
+            {pnl >= 0 ? '+' : ''}${fmt(pnl.toFixed(2))}
+            <span className="text-2xs ml-1 opacity-60">({roe >= 0 ? '+' : ''}{roe.toFixed(1)}%)</span>
+          </>
+        )}
       </td>
       <td className="px-3 py-2">
         <button
@@ -77,7 +87,7 @@ function PositionRow({ pos, markPrice, assetIndex, walletClient, onClose }: {
           disabled={closing}
           className="text-2xs px-2 py-1 rounded border border-short/40 text-short hover:bg-short/10 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
         >
-          {closing ? '...' : 'Close'}
+          {closing ? '...' : t('positions.close')}
         </button>
       </td>
     </tr>
@@ -88,28 +98,31 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
   const { positions, openOrders, fills, totalPnl, accountValue, availableBalance, refresh } = useAccount_HL()
   const { data: walletClient } = useWalletClient()
   const [tab, setTab] = useState<'positions' | 'orders' | 'history'>('positions')
+  const { settings } = useSettings()
+  const fmt = (s: string) => applyNumberFormat(s, settings.numberFormat)
+  const { t } = useTranslation()
 
   const tabs = [
-    { key: 'positions' as const, label: `Positions (${positions.length})` },
-    { key: 'orders' as const, label: `Orders (${(openOrders as unknown[]).length})` },
-    { key: 'history' as const, label: 'History' },
+    { key: 'positions' as const, label: `${t('positions.positions')} (${positions.length})` },
+    { key: 'orders' as const, label: `${t('positions.orders')} (${(openOrders as unknown[]).length})` },
+    { key: 'history' as const, label: t('positions.history') },
   ]
 
   return (
     <div className="flex flex-col overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center border-b border-border-primary flex-shrink-0 px-1">
-        {tabs.map(t => (
+        {tabs.map(tb => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
-              tab === t.key
+              tab === tb.key
                 ? 'text-text-primary border-b-2 border-accent-blue -mb-px'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
 
@@ -118,16 +131,16 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
           {accountValue > 0 && (
             <>
               <span className="text-text-muted">
-                Balance: <span className="text-text-primary font-mono">${accountValue.toFixed(2)}</span>
+                {t('positions.balance')}: <span className="text-text-primary font-mono">${fmt(accountValue.toFixed(2))}</span>
               </span>
               <span className="text-text-muted">
-                Available: <span className="text-text-primary font-mono">${availableBalance.toFixed(2)}</span>
+                {t('positions.available')}: <span className="text-text-primary font-mono">${fmt(availableBalance.toFixed(2))}</span>
               </span>
               {positions.length > 0 && (
                 <span className="text-text-muted">
-                  PnL:{' '}
+                  {t('positions.pnl')}:{' '}
                   <span className={`font-mono font-medium ${totalPnl >= 0 ? 'text-long' : 'text-short'}`}>
-                    {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                    {settings.hidePnl ? '••••' : `${totalPnl >= 0 ? '+' : ''}$${fmt(totalPnl.toFixed(2))}`}
                   </span>
                 </span>
               )}
@@ -142,13 +155,13 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
         {tab === 'positions' && (
           positions.length === 0 ? (
             <div className="flex items-center justify-center h-full text-xs text-text-muted">
-              No open positions
+              {t('positions.noOpenPositions')}
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="text-2xs text-text-muted uppercase tracking-wider border-b border-border-primary sticky top-0 bg-bg-secondary">
-                  {['Market', 'Side', 'Size', 'Entry', 'Mark', 'Liq. Price', 'PnL (ROE)', ''].map(h => (
+                  {[t('positions.market'), t('positions.side'), t('positions.size'), t('positions.entry'), t('positions.mark'), t('positions.liqPrice'), t('positions.pnlRoe'), ''].map(h => (
                     <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -162,6 +175,8 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
                     assetIndex={assetIndexMap[pos.coin] ?? -1}
                     walletClient={walletClient}
                     onClose={refresh}
+                    fmt={fmt}
+                    hidePnl={settings.hidePnl}
                   />
                 ))}
               </tbody>
@@ -172,13 +187,13 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
         {tab === 'orders' && (
           (openOrders as unknown[]).length === 0 ? (
             <div className="flex items-center justify-center h-full text-xs text-text-muted">
-              No open orders
+              {t('positions.noOpenOrders')}
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="text-2xs text-text-muted uppercase tracking-wider border-b border-border-primary sticky top-0 bg-bg-secondary">
-                  {['Market', 'Side', 'Size', 'Price'].map(h => (
+                  {[t('positions.market'), t('positions.side'), t('positions.size'), t('positions.price')].map(h => (
                     <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -189,11 +204,11 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
                     <td className="px-3 py-2 font-medium text-text-primary">{o.coin}-PERP</td>
                     <td className="px-3 py-2">
                       <span className={`px-1.5 py-0.5 rounded text-2xs font-semibold ${o.side === 'B' ? 'bg-long/15 text-long' : 'bg-short/15 text-short'}`}>
-                        {o.side === 'B' ? 'Buy' : 'Sell'}
+                        {o.side === 'B' ? t('tradePanel.buy') : t('tradePanel.sell')}
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-mono text-text-secondary">{o.sz}</td>
-                    <td className="px-3 py-2 font-mono text-text-secondary">${o.limitPx}</td>
+                    <td className="px-3 py-2 font-mono text-text-secondary">{fmt(o.sz)}</td>
+                    <td className="px-3 py-2 font-mono text-text-secondary">${fmt(o.limitPx)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -204,13 +219,13 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
         {tab === 'history' && (
           (fills as unknown[]).length === 0 ? (
             <div className="flex items-center justify-center h-full text-xs text-text-muted">
-              No trade history
+              {t('positions.noTradeHistory')}
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="text-2xs text-text-muted uppercase tracking-wider border-b border-border-primary sticky top-0 bg-bg-secondary">
-                  {['Time', 'Market', 'Side', 'Size', 'Price', 'Fee'].map(h => (
+                  {[t('positions.time'), t('positions.market'), t('positions.side'), t('positions.size'), t('positions.price'), t('positions.fee')].map(h => (
                     <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -222,12 +237,12 @@ export function Positions({ markPrices, assetIndexMap }: PositionsProps) {
                     <td className="px-3 py-1.5 text-text-primary font-medium">{f.coin}-PERP</td>
                     <td className="px-3 py-1.5">
                       <span className={`px-1.5 py-0.5 rounded text-2xs font-semibold ${f.side === 'B' ? 'bg-long/15 text-long' : 'bg-short/15 text-short'}`}>
-                        {f.side === 'B' ? 'Buy' : 'Sell'}
+                        {f.side === 'B' ? t('tradePanel.buy') : t('tradePanel.sell')}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 font-mono text-text-secondary tabular-nums">{f.sz}</td>
-                    <td className="px-3 py-1.5 font-mono text-text-secondary tabular-nums">${f.px}</td>
-                    <td className="px-3 py-1.5 font-mono text-text-muted tabular-nums">${parseFloat(f.fee).toFixed(4)}</td>
+                    <td className="px-3 py-1.5 font-mono text-text-secondary tabular-nums">{fmt(f.sz)}</td>
+                    <td className="px-3 py-1.5 font-mono text-text-secondary tabular-nums">${fmt(f.px)}</td>
+                    <td className="px-3 py-1.5 font-mono text-text-muted tabular-nums">${fmt(parseFloat(f.fee).toFixed(4))}</td>
                   </tr>
                 ))}
               </tbody>

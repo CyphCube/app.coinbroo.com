@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import type { UnifiedMarket, MarketCategory } from '@/hooks/useMarkets'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { TokenLogo } from '@/components/ui/TokenLogo'
+import { useSettings } from '@/hooks/useSettings'
+import { applyNumberFormat } from '@/lib/numberFormat'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface MarketListProps {
   markets: UnifiedMarket[]
@@ -66,6 +69,9 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('volume')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const { settings } = useSettings()
+  const fmt = (s: string) => applyNumberFormat(s, settings.numberFormat)
+  const { t } = useTranslation()
 
   // Persist filter choice whenever it changes
   useEffect(() => {
@@ -74,7 +80,10 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
 
   const spotView = category === 'Spot'
 
-  const available = TAB_ORDER.filter(t => t === 'All' || markets.some(m => m.category === t))
+  const available = TAB_ORDER.filter(c => c === 'All' || markets.some(m => m.category === c))
+
+  const categoryLabel = (c: MarketCategory | 'All') =>
+    c === 'All' ? t('marketList.all') : c === 'Perps' ? t('marketList.perps') : t('marketList.spot')
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -153,7 +162,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search markets..."
+            placeholder={t('marketList.searchPlaceholder')}
             className="w-full bg-bg-tertiary border border-border-primary rounded-lg pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-secondary"
           />
         </div>
@@ -174,7 +183,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
-                {opt}
+                {isStrict ? t('marketList.strict') : t('marketList.all')}
               </button>
             )
           })}
@@ -191,7 +200,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
               category === c ? 'text-accent-blue border-b-2 border-accent-blue rounded-none' : 'text-text-muted hover:text-text-secondary'
             }`}
           >
-            {c}
+            {categoryLabel(c)}
           </button>
         ))}
       </div>
@@ -200,18 +209,18 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
       <div className={`grid ${gridCols} px-3 py-1.5 border-b border-border-primary flex-shrink-0`}>
         {isMobile ? (
           <>
-            <SortHeader label="Symbol" k="symbol" align="left" />
-            <SortHeader label="Volume" k="volume" />
-            <SortHeader label="Last / 24h" k="price" />
+            <SortHeader label={t('marketList.symbol')} k="symbol" align="left" />
+            <SortHeader label={t('marketList.volume')} k="volume" />
+            <SortHeader label={t('marketList.lastAnd24h')} k="price" />
           </>
         ) : (
           <>
-            <SortHeader label="Symbol" k="symbol" align="left" />
-            <SortHeader label="Last Price" k="price" />
-            <SortHeader label="24h Change" k="change" />
-            {!spotView && <SortHeader label="8h Funding" k="funding" />}
-            <SortHeader label="Volume" k="volume" />
-            <SortHeader label={spotView ? 'Market Cap' : 'Open Interest'} k="oi" />
+            <SortHeader label={t('marketList.symbol')} k="symbol" align="left" />
+            <SortHeader label={t('marketList.lastPrice')} k="price" />
+            <SortHeader label={t('marketList.change24h')} k="change" />
+            {!spotView && <SortHeader label={t('marketList.funding8h')} k="funding" />}
+            <SortHeader label={t('marketList.volume')} k="volume" />
+            <SortHeader label={spotView ? t('marketList.marketCap') : t('marketList.openInterest')} k="oi" />
           </>
         )}
       </div>
@@ -219,7 +228,7 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
       {/* Rows */}
       <div className="flex-1 overflow-y-auto">
         {list.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-xs text-text-muted">No markets</div>
+          <div className="flex items-center justify-center h-full text-xs text-text-muted">{t('marketList.noMarkets')}</div>
         ) : (
           list.map(m => {
             const isUp = m.change24h >= 0
@@ -251,10 +260,10 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                       </div>
                     </div>
                     {/* Volume (compact) */}
-                    <span className="text-sm font-mono text-text-secondary text-right tabular-nums">{fmtCompactUsd(m.volume24h)}</span>
+                    <span className="text-sm font-mono text-text-secondary text-right tabular-nums">{fmt(fmtCompactUsd(m.volume24h))}</span>
                     {/* Last price + 24h change, stacked */}
                     <div className="flex flex-col gap-1 items-end">
-                      <span className="text-sm font-mono text-text-primary tabular-nums">{fmtPrice(m.price)}</span>
+                      <span className="text-sm font-mono text-text-primary tabular-nums">{fmt(fmtPrice(m.price))}</span>
                       <span className={`text-xs font-mono tabular-nums ${isUp ? 'text-long' : 'text-short'}`}>
                         {isUp ? '+' : ''}{m.change24h.toFixed(2)}%
                       </span>
@@ -274,10 +283,10 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                       )}
                     </div>
                     {/* Last price */}
-                    <span className="text-sm font-mono text-text-primary text-right tabular-nums">{fmtPrice(m.price)}</span>
+                    <span className="text-sm font-mono text-text-primary text-right tabular-nums">{fmt(fmtPrice(m.price))}</span>
                     {/* 24h change */}
                     <span className={`text-xs font-mono text-right tabular-nums ${isUp ? 'text-long' : 'text-short'}`}>
-                      {absChg !== 0 ? `${isUp ? '+' : ''}${fmtPrice(Math.abs(absChg))} / ` : ''}{isUp ? '+' : ''}{m.change24h.toFixed(2)}%
+                      {absChg !== 0 ? `${isUp ? '+' : ''}${fmt(fmtPrice(Math.abs(absChg)))} / ` : ''}{isUp ? '+' : ''}{m.change24h.toFixed(2)}%
                     </span>
                     {/* Funding — perps view only */}
                     {!spotView && (
@@ -286,12 +295,12 @@ export function MarketList({ markets, selected, onSelect }: MarketListProps) {
                       </span>
                     )}
                     {/* Volume */}
-                    <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmtVol(m.volume24h)}</span>
+                    <span className="text-xs font-mono text-text-secondary text-right tabular-nums">{fmt(fmtVol(m.volume24h))}</span>
                     {/* Market Cap (spot) or Open Interest (perps) */}
                     <span className="text-xs font-mono text-text-secondary text-right tabular-nums">
                       {spotView
-                        ? (m.marketCap ? fmtUsd(m.marketCap) : '—')
-                        : (m.kind === 'perp' ? fmtUsd(m.openInterest * m.price) : '—')}
+                        ? (m.marketCap ? fmt(fmtUsd(m.marketCap)) : '—')
+                        : (m.kind === 'perp' ? fmt(fmtUsd(m.openInterest * m.price)) : '—')}
                     </span>
                   </>
                 )}

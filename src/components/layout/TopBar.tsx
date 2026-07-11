@@ -5,6 +5,9 @@ import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
 import { MarketList } from '@/components/trading/MarketList'
 import { TokenLogo } from '@/components/ui/TokenLogo'
+import { useSettings } from '@/hooks/useSettings'
+import { applyNumberFormat } from '@/lib/numberFormat'
+import { useTranslation } from '@/hooks/useTranslation'
 import type { UnifiedMarket } from '@/hooks/useMarkets'
 
 function fmt(n: number, decimals = 2) {
@@ -34,6 +37,10 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
   const { accountValue, totalPnl } = useAccount_HL()
   const [marketOpen, setMarketOpen] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const { settings } = useSettings()
+  const numFmt = (s: string) => applyNumberFormat(s, settings.numberFormat)
+  const { t } = useTranslation()
 
   // Lock background scroll while the market selector is open (like Hyperliquid)
   useEffect(() => {
@@ -41,6 +48,16 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
     el.style.overflow = marketOpen ? 'hidden' : ''
     return () => { el.style.overflow = '' }
   }, [marketOpen])
+
+  // Tick every second for the funding countdown
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Hyperliquid funding settles hourly on the UTC hour; count down to the next one
+  const secsToFunding = Math.floor((3600000 - (now % 3600000)) / 1000)
+  const fundingCountdown = `${String(Math.floor(secsToFunding / 60)).padStart(2, '0')}:${String(secsToFunding % 60).padStart(2, '0')}`
 
   const isUp = change24h >= 0
   const absChg = market && market.prevDayPx > 0 ? markPrice - market.prevDayPx : 0
@@ -54,14 +71,14 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
       ? `${market.display}/${market.quoteToken}`
       : `${market.display}-USDC`
 
-  const stats: { label: string; value: string; color: string }[] = [
-    { label: '24h Change', value: `${isUp ? '+' : ''}${change24h.toFixed(2)}%`, color: isUp ? 'text-long' : 'text-short' },
-    { label: 'Prev Close', value: market && market.prevDayPx > 0 ? `$${fmtPrice(market.prevDayPx)}` : '—', color: 'text-text-primary' },
-    { label: '24h Volume', value: market && market.volume24h > 0 ? `$${fmt(market.volume24h)}` : '—', color: 'text-text-primary' },
+  const stats: { key: string; label: string; value: string; color: string; sub?: string }[] = [
+    { key: 'change24h', label: t('topBar.change24h'), value: `${isUp ? '+' : ''}${change24h.toFixed(2)}%`, color: isUp ? 'text-long' : 'text-short' },
+    { key: 'prevClose', label: t('topBar.prevClose'), value: market && market.prevDayPx > 0 ? `$${numFmt(fmtPrice(market.prevDayPx))}` : '—', color: 'text-text-primary' },
+    { key: 'volume24h', label: t('topBar.volume24h'), value: market && market.volume24h > 0 ? `$${numFmt(fmt(market.volume24h))}` : '—', color: 'text-text-primary' },
   ]
   if (isPerp) {
-    stats.push({ label: 'Open Interest', value: market && market.openInterest > 0 ? `$${fmt(market.openInterest * markPrice)}` : '—', color: 'text-text-primary' })
-    stats.push({ label: 'Funding (1h)', value: `${fundingPositive ? '+' : ''}${((market?.funding ?? 0) * 100).toFixed(4)}%`, color: fundingPositive ? 'text-long' : 'text-short' })
+    stats.push({ key: 'openInterest', label: t('topBar.openInterest'), value: market && market.openInterest > 0 ? `$${numFmt(fmt(market.openInterest * markPrice))}` : '—', color: 'text-text-primary' })
+    stats.push({ key: 'funding', label: t('topBar.fundingCountdown'), value: `${fundingPositive ? '+' : ''}${((market?.funding ?? 0) * 100).toFixed(4)}%`, color: fundingPositive ? 'text-long' : 'text-short', sub: fundingCountdown })
   }
 
   return (
@@ -83,16 +100,18 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
             </svg>
           </button>
           <span className={`font-mono text-base font-semibold ${isUp ? 'text-long' : 'text-short'}`}>
-            ${fmtPrice(markPrice)}
+            ${numFmt(fmtPrice(markPrice))}
           </span>
         </div>
 
         {/* Stats row — horizontally scrollable on mobile */}
         <div className="flex items-center gap-4 md:gap-6 flex-1 overflow-x-auto scrollbar-hide whitespace-nowrap">
           {stats.map(s => (
-            <div key={s.label} className="flex flex-col flex-shrink-0">
+            <div key={s.key} className="flex flex-col flex-shrink-0">
               <span className="text-2xs text-text-muted leading-none mb-1.5 border-b border-dotted border-border-secondary pb-0.5 w-fit">{s.label}</span>
-              <span className={`text-xs font-mono font-medium leading-none ${s.color}`}>{s.value}</span>
+              <span className={`text-xs font-mono font-medium leading-none ${s.color}`}>
+                {s.value}{s.sub && <span className="text-text-secondary ml-1.5 tabular-nums">{s.sub}</span>}
+              </span>
             </div>
           ))}
         </div>
@@ -101,13 +120,13 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
         {isConnected && accountValue > 0 && (
           <div className="hidden lg:flex items-center gap-5 ml-4 pl-5 border-l border-border-primary flex-shrink-0">
             <div className="flex flex-col">
-              <span className="text-2xs text-text-muted leading-none mb-1.5">Account Equity</span>
-              <span className="text-xs font-mono font-medium text-text-primary leading-none">${accountValue.toFixed(2)}</span>
+              <span className="text-2xs text-text-muted leading-none mb-1.5">{t('topBar.accountEquity')}</span>
+              <span className="text-xs font-mono font-medium text-text-primary leading-none">${numFmt(accountValue.toFixed(2))}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-2xs text-text-muted leading-none mb-1.5">Unrealized PnL</span>
+              <span className="text-2xs text-text-muted leading-none mb-1.5">{t('topBar.unrealizedPnl')}</span>
               <span className={`text-xs font-mono font-medium leading-none ${totalPnl >= 0 ? 'text-long' : 'text-short'}`}>
-                {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                {settings.hidePnl ? '••••' : `${totalPnl >= 0 ? '+' : ''}$${numFmt(totalPnl.toFixed(2))}`}
               </span>
             </div>
           </div>
@@ -137,9 +156,9 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
           {/* Price + change + expand toggle */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex flex-col items-end">
-              <span className={`font-mono text-lg font-semibold leading-tight ${isUp ? 'text-long' : 'text-short'}`}>{fmtPrice(markPrice)}</span>
+              <span className={`font-mono text-lg font-semibold leading-tight ${isUp ? 'text-long' : 'text-short'}`}>{numFmt(fmtPrice(markPrice))}</span>
               <span className={`font-mono text-2xs leading-none ${isUp ? 'text-long' : 'text-short'}`}>
-                {absChg !== 0 ? `${isUp ? '+' : ''}${fmtPrice(Math.abs(absChg))} / ` : ''}{isUp ? '+' : ''}{change24h.toFixed(2)}%
+                {absChg !== 0 ? `${isUp ? '+' : ''}${numFmt(fmtPrice(Math.abs(absChg)))} / ` : ''}{isUp ? '+' : ''}{change24h.toFixed(2)}%
               </span>
             </div>
             <button
@@ -158,9 +177,11 @@ export function TopBar({ market, markPrice, change24h, markets, onSelectMarket }
         {statsOpen && (
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-3 pb-3 pt-1 border-t border-border-primary">
             {stats.map(s => (
-              <div key={s.label} className="flex flex-col gap-1">
+              <div key={s.key} className="flex flex-col gap-1">
                 <span className="text-2xs text-text-muted border-b border-dotted border-border-secondary w-fit pb-0.5">{s.label}</span>
-                <span className={`text-sm font-mono font-medium ${s.color}`}>{s.value}</span>
+                <span className={`text-sm font-mono font-medium ${s.color}`}>
+                  {s.value}{s.sub && <span className="text-text-secondary ml-1.5 tabular-nums">{s.sub}</span>}
+                </span>
               </div>
             ))}
           </div>

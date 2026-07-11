@@ -8,6 +8,7 @@ import { useAccount_HL } from '@/hooks/useAccountHL'
 import { useOnboarding } from '@/hooks/useOnboarding'
 import { OnboardingModal } from '@/components/ui/OnboardingModal'
 import { BUILDER_FEE } from '@/lib/hyperliquid'
+import { useTranslation } from '@/hooks/useTranslation'
 
 interface TradePanelProps {
   coin: string
@@ -25,16 +26,8 @@ interface TradePanelProps {
 
 type OrderType = 'market' | 'limit' | 'stopLimit' | 'stopMarket' | 'takeLimit' | 'takeMarket'
 
-const PRO_TYPES: { key: OrderType; label: string }[] = [
-  { key: 'stopLimit', label: 'Stop Limit' },
-  { key: 'stopMarket', label: 'Stop Market' },
-  { key: 'takeLimit', label: 'Take Limit' },
-  { key: 'takeMarket', label: 'Take Market' },
-]
-const PRO_LABEL: Record<string, string> = Object.fromEntries(PRO_TYPES.map(p => [p.key, p.label]))
-
-const isTriggerType = (t: OrderType) => t.startsWith('stop') || t.startsWith('take')
-const needsLimitPx = (t: OrderType) => t === 'limit' || t === 'stopLimit' || t === 'takeLimit'
+const isTriggerType = (ot: OrderType) => ot.startsWith('stop') || ot.startsWith('take')
+const needsLimitPx = (ot: OrderType) => ot === 'limit' || ot === 'stopLimit' || ot === 'takeLimit'
 
 const BUILDER_RATE = BUILDER_FEE / 100000
 
@@ -49,6 +42,15 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
   const { data: walletClient } = useWalletClient()
   const { availableBalance, positions, spotBalances, refresh } = useAccount_HL()
   const { state, error, isNew, isApproved, ensureApproved, reset } = useOnboarding()
+  const { t } = useTranslation()
+
+  const PRO_TYPES: { key: OrderType; label: string }[] = [
+    { key: 'stopLimit', label: t('tradePanel.stopLimit') },
+    { key: 'stopMarket', label: t('tradePanel.stopMarket') },
+    { key: 'takeLimit', label: t('tradePanel.takeLimit') },
+    { key: 'takeMarket', label: t('tradePanel.takeMarket') },
+  ]
+  const PRO_LABEL: Record<string, string> = Object.fromEntries(PRO_TYPES.map(p => [p.key, p.label]))
 
   const [isBuy, setIsBuy] = useState(true)
   const [orderType, setOrderType] = useState<OrderType>('limit')
@@ -116,15 +118,15 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
   async function placeOrder() {
     if (!walletClient || !isConnected || !address) return
     if (!sizeUsd || parseFloat(sizeUsd) <= 0) {
-      setStatus({ type: 'error', msg: 'Enter a valid size' })
+      setStatus({ type: 'error', msg: t('tradePanel.enterValidSize') })
       return
     }
     if (needsLimitPx(orderType) && !(parseFloat(limitPrice) > 0)) {
-      setStatus({ type: 'error', msg: 'Enter a limit price' })
+      setStatus({ type: 'error', msg: t('tradePanel.enterLimitPrice') })
       return
     }
     if (isTriggerType(orderType) && !(parseFloat(triggerPrice) > 0)) {
-      setStatus({ type: 'error', msg: 'Enter a trigger price' })
+      setStatus({ type: 'error', msg: t('tradePanel.enterTriggerPrice') })
       return
     }
     if (!isApproved(address)) {
@@ -162,22 +164,22 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
         const statuses = result?.response?.data?.statuses
         const err = statuses?.find?.((s: unknown) => typeof s === 'object' && s && 'error' in s) as { error?: string } | undefined
         if (err?.error) throw new Error(err.error)
-        setStatus({ type: 'success', msg: `${isBuy ? 'Buy' : 'Sell'} order placed!` })
+        setStatus({ type: 'success', msg: isBuy ? t('tradePanel.buyOrderPlaced') : t('tradePanel.sellOrderPlaced') })
         setSizeUsd(''); setSizePct(0)
         onOrderPlaced?.()
         setTimeout(refresh, 1000)
       } else {
-        throw new Error(result?.response?.data?.statuses?.[0] || result?.response || 'Order failed')
+        throw new Error(result?.response?.data?.statuses?.[0] || result?.response || t('tradePanel.orderFailed'))
       }
     } catch (e: unknown) {
-      setStatus({ type: 'error', msg: e instanceof Error ? e.message : 'Order failed' })
+      setStatus({ type: 'error', msg: e instanceof Error ? e.message : t('tradePanel.orderFailed') })
     } finally {
       setPlacing(false)
     }
   }
 
-  const buyLabel = isSpot ? 'Buy' : 'Buy / Long'
-  const sellLabel = isSpot ? 'Sell' : 'Sell / Short'
+  const buyLabel = isSpot ? t('tradePanel.buy') : t('tradePanel.buyLong')
+  const sellLabel = isSpot ? t('tradePanel.sell') : t('tradePanel.sellShort')
 
   return (
     <>
@@ -189,9 +191,9 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
           <div className="flex items-center gap-1.5 p-2 border-b border-border-primary flex-shrink-0">
             <button
               onClick={() => setMarginMode(m => m === 'cross' ? 'isolated' : 'cross')}
-              className="flex-1 py-1.5 text-2xs font-semibold rounded bg-bg-tertiary text-text-secondary hover:bg-bg-hover transition-colors capitalize"
+              className="flex-1 py-1.5 text-2xs font-semibold rounded bg-bg-tertiary text-text-secondary hover:bg-bg-hover transition-colors"
             >
-              {marginMode}
+              {marginMode === 'cross' ? t('tradePanel.cross') : t('tradePanel.isolated')}
             </button>
             <button
               onClick={() => setShowLevPicker(v => !v)}
@@ -200,7 +202,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
               {clampedLev}x
             </button>
             <span className="flex-1 py-1.5 text-2xs font-semibold rounded bg-bg-tertiary text-text-muted text-center">
-              Unified
+              {t('tradePanel.unified')}
             </span>
           </div>
         )}
@@ -208,7 +210,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
         {!isSpot && showLevPicker && (
           <div className="px-3 py-2.5 border-b border-border-primary flex-shrink-0">
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-2xs text-text-muted">Leverage</span>
+              <span className="text-2xs text-text-muted">{t('tradePanel.leverage')}</span>
               <span className="text-xs font-medium text-text-primary">{clampedLev}x</span>
             </div>
             <input
@@ -224,15 +226,15 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
 
         {/* Order type tabs */}
         <div className="flex items-center justify-between border-b border-border-primary flex-shrink-0 relative px-1">
-          {(['market', 'limit'] as OrderType[]).map(t => (
+          {(['market', 'limit'] as OrderType[]).map(ot => (
             <button
-              key={t}
-              onClick={() => { setOrderType(t); setShowProMenu(false) }}
+              key={ot}
+              onClick={() => { setOrderType(ot); setShowProMenu(false) }}
               className={`px-3 py-2 text-xs font-medium capitalize transition-colors ${
-                orderType === t ? 'text-text-primary border-b-2 border-accent-blue -mb-px' : 'text-text-muted hover:text-text-secondary'
+                orderType === ot ? 'text-text-primary border-b-2 border-accent-blue -mb-px' : 'text-text-muted hover:text-text-secondary'
               }`}
             >
-              {t}
+              {ot === 'market' ? t('tradePanel.market') : t('tradePanel.limit')}
             </button>
           ))}
           {/* Pro (trigger orders) */}
@@ -242,12 +244,12 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
               isTriggerType(orderType) ? 'text-text-primary border-b-2 border-accent-blue -mb-px' : 'text-text-muted hover:text-text-secondary'
             }`}
           >
-            {isTriggerType(orderType) ? PRO_LABEL[orderType] : 'Pro'}
+            {isTriggerType(orderType) ? PRO_LABEL[orderType] : t('tradePanel.pro')}
             <svg className={`w-3 h-3 transition-transform ${showProMenu ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          {isSpot && <span className="ml-auto pr-3 text-2xs text-accent-blue self-center">Spot</span>}
+          {isSpot && <span className="ml-auto pr-3 text-2xs text-accent-blue self-center">{t('tradePanel.spot')}</span>}
 
           {showProMenu && (
             <>
@@ -293,7 +295,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
           {/* Available / position */}
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
-              <span className="text-text-muted">Available to Trade</span>
+              <span className="text-text-muted">{t('tradePanel.availableToTrade')}</span>
               {isSpot ? (
                 <span className="text-text-primary font-mono tabular-nums">
                   {isBuy ? `${usdcSpot.toFixed(2)} USDC` : `${baseBal.toFixed(4)} ${baseToken}`}
@@ -304,7 +306,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
             </div>
             {!isSpot && (
               <div className="flex justify-between">
-                <span className="text-text-muted">Current Position</span>
+                <span className="text-text-muted">{t('tradePanel.currentPosition')}</span>
                 <span className="text-text-primary font-mono tabular-nums">{Math.abs(positionSize).toFixed(4)} {coin}</span>
               </div>
             )}
@@ -313,7 +315,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
           {/* Trigger price (Stop/Take orders) */}
           {isTriggerType(orderType) && (
             <div className="relative">
-              <label className="text-2xs text-text-muted block mb-1">Trigger Price (USDC)</label>
+              <label className="text-2xs text-text-muted block mb-1">{t('tradePanel.triggerPrice')}</label>
               <input
                 type="number"
                 value={triggerPrice}
@@ -325,7 +327,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
                 onClick={() => { if (markPrice > 0) setTriggerPrice(fmtPrice(markPrice)) }}
                 className="absolute right-2 top-[26px] text-2xs text-accent-blue hover:text-accent-blue-dim font-medium"
               >
-                Mid
+                {t('tradePanel.mid')}
               </button>
             </div>
           )}
@@ -333,7 +335,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
           {/* Limit price (Limit + Stop/Take Limit) */}
           {needsLimitPx(orderType) && (
             <div className="relative">
-              <label className="text-2xs text-text-muted block mb-1">Price (USDC)</label>
+              <label className="text-2xs text-text-muted block mb-1">{t('tradePanel.price')}</label>
               <input
                 type="number"
                 value={limitPrice}
@@ -345,14 +347,14 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
                 onClick={setMid}
                 className="absolute right-2 top-[26px] text-2xs text-accent-blue hover:text-accent-blue-dim font-medium"
               >
-                Mid
+                {t('tradePanel.mid')}
               </button>
             </div>
           )}
 
           {/* Size */}
           <div>
-            <label className="text-2xs text-text-muted block mb-1">Size (USD)</label>
+            <label className="text-2xs text-text-muted block mb-1">{t('tradePanel.size')} (USD)</label>
             <input
               type="number"
               value={sizeUsd}
@@ -390,7 +392,7 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
                 onChange={e => setReduceOnly(e.target.checked)}
                 className="w-3.5 h-3.5 accent-accent-blue"
               />
-              <span className="text-xs text-text-secondary">Reduce Only</span>
+              <span className="text-xs text-text-secondary">{t('tradePanel.reduceOnly')}</span>
             </label>
           )}
 
@@ -410,11 +412,11 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
                 isBuy ? 'bg-long hover:bg-long-dim' : 'bg-short hover:bg-short-dim'
               }`}
             >
-              {placing ? 'Placing...' : `${isBuy ? buyLabel : sellLabel} ${isSpot ? baseToken : coin}`}
+              {placing ? t('tradePanel.placing') : `${isBuy ? buyLabel : sellLabel} ${isSpot ? baseToken : coin}`}
             </button>
           ) : (
             <button className="w-full py-2.5 rounded-md text-sm font-semibold text-bg-primary bg-accent-blue cursor-default">
-              Connect to Trade
+              {t('tradePanel.connectToTrade')}
             </button>
           )}
 
@@ -422,22 +424,22 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
           <div className="space-y-1.5 text-xs pt-1 border-t border-border-primary">
             {!isSpot && (
               <div className="flex justify-between">
-                <span className="text-text-muted">Liquidation Price</span>
+                <span className="text-text-muted">{t('tradePanel.liquidationPrice')}</span>
                 <span className="font-mono text-text-secondary tabular-nums">{liqPrice ? `$${fmtPrice(liqPrice)}` : 'N/A'}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-text-muted">Order Value</span>
+              <span className="text-text-muted">{t('tradePanel.orderValue')}</span>
               <span className="font-mono text-text-secondary tabular-nums">{orderValue > 0 ? `$${orderValue.toFixed(2)}` : 'N/A'}</span>
             </div>
             {!isSpot && (
               <div className="flex justify-between">
-                <span className="text-text-muted">Margin Required</span>
+                <span className="text-text-muted">{t('tradePanel.marginRequired')}</span>
                 <span className="font-mono text-text-secondary tabular-nums">{margin > 0 ? `$${margin.toFixed(2)}` : 'N/A'}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-text-muted">Fees</span>
+              <span className="text-text-muted">{t('tradePanel.fees')}</span>
               <span className="font-mono text-text-secondary tabular-nums">{takerFeeStr} / {makerFeeStr}</span>
             </div>
           </div>
