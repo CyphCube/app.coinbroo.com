@@ -22,6 +22,13 @@ export default function TradingPage() {
   const [trades, setTrades] = useState<Record<string, Trade[]>>({})
   const isMobile = useMediaQuery('(max-width: 767px)')
   const [mobileTab, setMobileTab] = useState<'trade' | 'book'>('trade')
+  // Clicking an order-book row fills the trade panel's price (Hyperliquid UX).
+  // The counter lets repeated clicks on the same price re-apply.
+  const [priceClick, setPriceClick] = useState<{ px: number; n: number } | null>(null)
+  const handlePriceClick = useCallback((px: number) => {
+    setPriceClick(prev => ({ px, n: (prev?.n ?? 0) + 1 }))
+    if (isMobile) setMobileTab('trade')
+  }, [isMobile])
   useAutoDisconnect()
 
   const markets = useMarkets()
@@ -91,12 +98,14 @@ export default function TradingPage() {
       spread={spread}
       trades={trades[selectedCoin] || []}
       szDecimals={market?.szDecimals ?? 2}
+      onPriceClick={handlePriceClick}
     />
   )
   const tradePanelEl = (
     <TradePanel
       coin={market?.display || selectedCoin}
       markPrice={markPrice}
+      priceClick={priceClick}
       assetIndex={market?.assetIndex ?? -1}
       maxLeverage={market?.maxLeverage || 50}
       baseTakerFee={baseFees.taker}

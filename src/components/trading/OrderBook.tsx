@@ -11,6 +11,7 @@ interface OrderBookProps {
   spread: number
   trades: Trade[]
   szDecimals: number
+  onPriceClick?: (px: number) => void
 }
 
 function fmtPrice(px: number) {
@@ -26,18 +27,22 @@ function fmtSize(sz: number) {
   return sz.toFixed(4)
 }
 
-function OBRow({ px, sz, total, side, maxCum, cum }: {
+function OBRow({ px, sz, total, side, maxCum, cum, onPriceClick }: {
   px: number
   sz: number
   total: number
   side: 'bid' | 'ask'
   maxCum: number
   cum: number
+  onPriceClick?: (px: number) => void
 }) {
   const pct = maxCum > 0 ? (cum / maxCum) * 100 : 0
   const isBid = side === 'bid'
   return (
-    <div className="relative grid grid-cols-3 items-center px-2 flex-1 min-h-0 hover:bg-bg-hover cursor-default text-2xs">
+    <div
+      onClick={() => onPriceClick?.(px)}
+      className={`relative grid grid-cols-3 items-center px-2 flex-1 min-h-0 hover:bg-bg-hover text-2xs ${onPriceClick ? 'cursor-pointer' : 'cursor-default'}`}
+    >
       <div
         className={`absolute top-0 bottom-0 left-0 opacity-[0.13] ${isBid ? 'bg-long' : 'bg-short'}`}
         style={{ width: `${pct}%` }}
@@ -49,7 +54,7 @@ function OBRow({ px, sz, total, side, maxCum, cum }: {
   )
 }
 
-export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecimals }: OrderBookProps) {
+export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecimals, onPriceClick }: OrderBookProps) {
   const [tab, setTab] = useState<'book' | 'trades'>('book')
   const N = 11
 
@@ -109,7 +114,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
             {/* Asks */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {askRows.map((r, i) => (
-                <OBRow key={`ask-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="ask" maxCum={maxCum} />
+                <OBRow key={`ask-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="ask" maxCum={maxCum} onPriceClick={onPriceClick} />
               ))}
             </div>
 
@@ -123,7 +128,7 @@ export function OrderBook({ coin, bids, asks, markPrice, spread, trades, szDecim
             {/* Bids */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {bidRows.map((r, i) => (
-                <OBRow key={`bid-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="bid" maxCum={maxCum} />
+                <OBRow key={`bid-${i}`} px={r.px} sz={r.sz} total={r.cum} cum={r.cum} side="bid" maxCum={maxCum} onPriceClick={onPriceClick} />
               ))}
             </div>
           </div>

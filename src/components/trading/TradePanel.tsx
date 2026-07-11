@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { postExchange } from '@/lib/hyperliquid'
 import { signOrder } from '@/lib/signing'
@@ -20,6 +20,7 @@ interface TradePanelProps {
   szDecimals?: number
   baseToken?: string
   onOrderPlaced?: () => void
+  priceClick?: { px: number; n: number } | null
 }
 
 type OrderType = 'market' | 'limit' | 'stopLimit' | 'stopMarket' | 'takeLimit' | 'takeMarket'
@@ -43,7 +44,7 @@ function fmtPrice(p: number) {
   return p.toFixed(5)
 }
 
-export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTakerFee = 0.00045, baseMakerFee = 0.00015, isSpot = false, szDecimals = 4, baseToken, onOrderPlaced }: TradePanelProps) {
+export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTakerFee = 0.00045, baseMakerFee = 0.00015, isSpot = false, szDecimals = 4, baseToken, onOrderPlaced, priceClick }: TradePanelProps) {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const { availableBalance, positions, spotBalances, refresh } = useAccount_HL()
@@ -62,6 +63,14 @@ export function TradePanel({ coin, markPrice, assetIndex, maxLeverage, baseTaker
   const [showLevPicker, setShowLevPicker] = useState(false)
   const [placing, setPlacing] = useState(false)
   const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  // Fill the limit price when the user clicks an order-book row (Hyperliquid UX).
+  // Switch to a limit-style order if the current type has no price field.
+  useEffect(() => {
+    if (!priceClick) return
+    setLimitPrice(String(priceClick.px))
+    setOrderType(t => (needsLimitPx(t) ? t : 'limit'))
+  }, [priceClick])
 
   const clampedLev = isSpot ? 1 : Math.min(Math.max(leverage, 1), maxLeverage)
   const takerFeeStr = ((baseTakerFee + BUILDER_RATE) * 100).toFixed(4) + '%'
