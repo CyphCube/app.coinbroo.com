@@ -122,6 +122,21 @@ export async function getReferralInfo(address: string) {
   return info({ type: 'referral', user: address })
 }
 
+export type PortfolioPeriod = 'day' | 'week' | 'month' | 'allTime'
+
+export interface PortfolioPeriodData {
+  accountValueHistory: [number, string][]
+  pnlHistory: [number, string][]
+  vlm: string
+}
+
+// Combined (perp + spot) account value / PnL history, bucketed by period.
+// Also includes perpDay/perpWeek/perpMonth/perpAllTime (perp-only) entries,
+// which we don't currently surface.
+export async function getPortfolio(address: string): Promise<[string, PortfolioPeriodData][]> {
+  return info({ type: 'portfolio', user: address })
+}
+
 export async function getBaseFees(): Promise<{ taker: number; maker: number }> {
   // Use a zero address to get the base fee schedule without user-specific discounts
   const data = await info({ type: 'userFees', user: '0x0000000000000000000000000000000000000000' })

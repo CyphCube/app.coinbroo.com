@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { useAccount_HL } from '@/hooks/useAccountHL'
@@ -12,12 +14,25 @@ import type { TranslationKey } from '@/lib/translations'
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Coinbroo'
 
-const NAV_ITEMS: TranslationKey[] = ['nav.trade', 'nav.portfolio', 'nav.vaults', 'nav.referrals', 'nav.leaderboard']
+// href: undefined means the page isn't built yet — rendered as an inert label.
+const NAV_ITEMS: { key: TranslationKey; href?: string }[] = [
+  { key: 'nav.trade', href: '/' },
+  { key: 'nav.portfolio', href: '/portfolio' },
+  { key: 'nav.vaults' },
+  { key: 'nav.referrals' },
+  { key: 'nav.leaderboard' },
+]
+
+function isActivePath(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname === `${href}/`
+}
 
 export function NavBar() {
   const { isConnected } = useAccount()
   const { availableBalance } = useAccount_HL()
   const { t } = useTranslation()
+  const pathname = usePathname()
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -45,16 +60,21 @@ export function NavBar() {
 
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV_ITEMS.map((item, i) => (
-            <button
-              key={item}
-              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                i === 0 ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-              }`}
-            >
-              {t(item)}
-            </button>
-          ))}
+          {NAV_ITEMS.map(item => {
+            const active = item.href ? isActivePath(pathname, item.href) : false
+            const className = `px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+              active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`
+            return item.href ? (
+              <Link key={item.key} href={item.href} className={className}>
+                {t(item.key)}
+              </Link>
+            ) : (
+              <button key={item.key} className={className}>
+                {t(item.key)}
+              </button>
+            )
+          })}
         </nav>
 
         <div className="flex-1" />
@@ -136,17 +156,21 @@ export function NavBar() {
         <>
           <div className="md:hidden fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
           <nav className="md:hidden fixed left-0 right-0 top-12 z-50 bg-bg-secondary border-b border-border-primary flex flex-col py-1 shadow-2xl">
-            {NAV_ITEMS.map((item, i) => (
-              <button
-                key={item}
-                onClick={() => setMenuOpen(false)}
-                className={`px-4 py-3 text-md text-left font-medium transition-colors ${
-                  i === 0 ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                {t(item)}
-              </button>
-            ))}
+            {NAV_ITEMS.map(item => {
+              const active = item.href ? isActivePath(pathname, item.href) : false
+              const className = `px-4 py-3 text-md text-left font-medium transition-colors ${
+                active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`
+              return item.href ? (
+                <Link key={item.key} href={item.href} onClick={() => setMenuOpen(false)} className={className}>
+                  {t(item.key)}
+                </Link>
+              ) : (
+                <button key={item.key} onClick={() => setMenuOpen(false)} className={className}>
+                  {t(item.key)}
+                </button>
+              )
+            })}
           </nav>
         </>
       )}
