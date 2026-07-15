@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useAccount } from 'wagmi'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { NavBar } from '@/components/layout/NavBar'
 import { Positions } from '@/components/trading/Positions'
 import { EquityChart } from '@/components/portfolio/EquityChart'
@@ -20,8 +21,15 @@ export default function PortfolioPage() {
   const { settings } = useSettings()
   const fmt = (s: string) => applyNumberFormat(s, settings.numberFormat)
   const { t } = useTranslation()
+  const { openConnectModal } = useConnectModal()
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferTab, setTransferTab] = useState<'deposit' | 'withdraw'>('deposit')
+
+  function openTransfer(tab: 'deposit' | 'withdraw') {
+    if (!isConnected) { openConnectModal?.(); return }
+    setTransferTab(tab)
+    setTransferOpen(true)
+  }
 
   // Same mapping the Trade page uses: perp mark prices + asset indices, so
   // the shared <Positions> table shows correct Mark prices and Close works.
@@ -41,59 +49,52 @@ export default function PortfolioPage() {
       <NavBar />
 
       <div className="max-w-5xl w-full mx-auto px-4 py-6 flex flex-col gap-4">
-        {!isConnected ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-24 text-center">
-            <span className="text-text-primary font-semibold">{t('portfolio.connectPrompt')}</span>
-            <span className="text-text-muted text-sm">{t('portfolio.connectPromptSub')}</span>
+        <h1 className="text-lg font-bold text-text-primary">{t('portfolio.title')}</h1>
+
+        {/* Header stats + deposit/withdraw — shown even without a connected wallet */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <span className="text-2xs text-text-muted mb-1">{t('topBar.accountEquity')}</span>
+              <span className="text-2xl font-mono font-bold text-text-primary">${fmt(accountValue.toFixed(2))}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xs text-text-muted mb-1">{t('portfolio.availableBalance')}</span>
+              <span className="text-lg font-mono font-medium text-text-secondary">${fmt(availableBalance.toFixed(2))}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xs text-text-muted mb-1">{t('topBar.unrealizedPnl')}</span>
+              <span className={`text-lg font-mono font-medium ${totalPnl >= 0 ? 'text-long' : 'text-short'}`}>
+                {settings.hidePnl ? '••••' : `${totalPnl >= 0 ? '+' : ''}$${fmt(totalPnl.toFixed(2))}`}
+              </span>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Header stats + deposit/withdraw */}
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-8">
-                <div className="flex flex-col">
-                  <span className="text-2xs text-text-muted mb-1">{t('topBar.accountEquity')}</span>
-                  <span className="text-2xl font-mono font-bold text-text-primary">${fmt(accountValue.toFixed(2))}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-2xs text-text-muted mb-1">{t('portfolio.availableBalance')}</span>
-                  <span className="text-lg font-mono font-medium text-text-secondary">${fmt(availableBalance.toFixed(2))}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-2xs text-text-muted mb-1">{t('topBar.unrealizedPnl')}</span>
-                  <span className={`text-lg font-mono font-medium ${totalPnl >= 0 ? 'text-long' : 'text-short'}`}>
-                    {settings.hidePnl ? '••••' : `${totalPnl >= 0 ? '+' : ''}$${fmt(totalPnl.toFixed(2))}`}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setTransferTab('deposit'); setTransferOpen(true) }}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-long hover:bg-long-dim text-bg-primary transition-colors"
-                >
-                  {t('nav.deposit')}
-                </button>
-                <button
-                  onClick={() => { setTransferTab('withdraw'); setTransferOpen(true) }}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-border-primary text-text-secondary hover:bg-bg-hover transition-colors"
-                >
-                  {t('nav.withdraw')}
-                </button>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openTransfer('deposit')}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-long hover:bg-long-dim text-bg-primary transition-colors"
+            >
+              {t('nav.deposit')}
+            </button>
+            <button
+              onClick={() => openTransfer('withdraw')}
+              className="px-4 py-2 text-xs font-semibold rounded-lg border border-border-primary text-text-secondary hover:bg-bg-hover transition-colors"
+            >
+              {t('nav.withdraw')}
+            </button>
+          </div>
+        </div>
 
-            {/* Equity chart */}
-            {address && <EquityChart address={address} />}
+        {/* Equity chart — flat zero line when no wallet is connected */}
+        <EquityChart address={address} />
 
-            {/* Spot balances */}
-            <Balances spotBalances={spotBalances} />
+        {/* Spot balances */}
+        <Balances spotBalances={spotBalances} />
 
-            {/* Positions / Orders / History (shared with the Trade page) */}
-            <div className="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
-              <Positions markPrices={markPrices} assetIndexMap={assetIndexMap} />
-            </div>
-          </>
-        )}
+        {/* Positions / Orders / History (shared with the Trade page) */}
+        <div className="bg-bg-secondary border border-border-primary rounded-lg overflow-hidden">
+          <Positions markPrices={markPrices} assetIndexMap={assetIndexMap} />
+        </div>
       </div>
 
       {transferOpen && (

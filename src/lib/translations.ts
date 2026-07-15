@@ -98,13 +98,12 @@ export const TRANSLATIONS = {
   'positions.fee': { English: 'Fee', Français: 'Frais', '简体中文': '手续费', '한국어': '수수료', Español: 'Comisión' },
 
   // ── Portfolio ───────────────────────────────────────────────────────────
+  'portfolio.title': { English: 'Portfolio', Français: 'Portefeuille', '简体中文': '投资组合', '한국어': '포트폴리오', Español: 'Portafolio' },
   'portfolio.availableBalance': { English: 'Available Balance', Français: 'Solde disponible', '简体中文': '可用余额', '한국어': '가용 잔액', Español: 'Saldo disponible' },
   'portfolio.balances': { English: 'Balances', Français: 'Soldes', '简体中文': '资产余额', '한국어': '잔액', Español: 'Saldos' },
   'portfolio.asset': { English: 'Asset', Français: 'Actif', '简体中文': '资产', '한국어': '자산', Español: 'Activo' },
   'portfolio.value': { English: 'Value', Français: 'Valeur', '简体中文': '价值', '한국어': '가치', Español: 'Valor' },
   'portfolio.noBalances': { English: 'No balances', Français: 'Aucun solde', '简体中文': '暂无余额', '한국어': '잔액 없음', Español: 'Sin saldos' },
-  'portfolio.connectPrompt': { English: 'Connect your wallet to view your portfolio', Français: 'Connectez-vous pour consulter votre portefeuille', '简体中文': '连接钱包以查看您的投资组合', '한국어': '지갑을 연결하여 포트폴리오를 확인하세요', Español: 'Conecta tu billetera para ver tu portafolio' },
-  'portfolio.connectPromptSub': { English: 'Your positions, balances, and history will appear here.', Français: 'Vos positions, soldes et historique apparaîtront ici.', '简体中文': '您的持仓、余额和历史记录将显示在此处。', '한국어': '포지션, 잔액, 내역이 여기에 표시됩니다.', Español: 'Tus posiciones, saldos e historial aparecerán aquí.' },
 
   // ── MarketList ──────────────────────────────────────────────────────────
   'marketList.searchPlaceholder': { English: 'Search markets...', Français: 'Rechercher des marchés...', '简体中文': '搜索市场...', '한국어': '마켓 검색...', Español: 'Buscar mercados...' },

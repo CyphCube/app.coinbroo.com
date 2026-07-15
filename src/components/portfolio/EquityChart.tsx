@@ -14,7 +14,7 @@ const PERIODS: { key: PortfolioPeriod; label: string }[] = [
 const ACCENT = '#1EBCAD'
 
 interface EquityChartProps {
-  address: string
+  address?: string
 }
 
 export function EquityChart({ address }: EquityChartProps) {
@@ -55,7 +55,22 @@ export function EquityChart({ address }: EquityChartProps) {
 
   // Load history whenever address/period changes
   useEffect(() => {
-    if (!seriesRef.current || !address) return
+    if (!seriesRef.current) return
+
+    // No wallet connected — show a flat zero line, like Hyperliquid's own
+    // Portfolio page does pre-connect, rather than an empty/blocked chart.
+    if (!address) {
+      const now = Math.floor(Date.now() / 1000)
+      seriesRef.current.setData([
+        { time: (now - 86400) as UTCTimestamp, value: 0 },
+        { time: now as UTCTimestamp, value: 0 },
+      ])
+      chartRef.current?.timeScale().fitContent()
+      setLoading(false)
+      setEmpty(false)
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     setEmpty(false)
