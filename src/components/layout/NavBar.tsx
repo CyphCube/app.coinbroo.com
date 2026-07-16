@@ -19,7 +19,6 @@ const NAV_ITEMS: { key: TranslationKey; href?: string }[] = [
   { key: 'nav.trade', href: '/' },
   { key: 'nav.portfolio', href: '/portfolio' },
   { key: 'nav.vaults' },
-  { key: 'nav.referrals' },
   { key: 'nav.leaderboard' },
 ]
 

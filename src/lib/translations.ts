@@ -10,7 +10,6 @@ export const TRANSLATIONS = {
   'nav.trade': { English: 'Trade', Français: 'Trading', '简体中文': '交易', '한국어': '거래', Español: 'Operar' },
   'nav.portfolio': { English: 'Portfolio', Français: 'Portefeuille', '简体中文': '投资组合', '한국어': '포트폴리오', Español: 'Portafolio' },
   'nav.vaults': { English: 'Vaults', Français: 'Coffres', '简体中文': '金库', '한국어': '볼트', Español: 'Bóvedas' },
-  'nav.referrals': { English: 'Referrals', Français: 'Parrainages', '简体中文': '推荐', '한국어': '추천', Español: 'Referidos' },
   'nav.leaderboard': { English: 'Leaderboard', Français: 'Classement', '简体中文': '排行榜', '한국어': '리더보드', Español: 'Clasificación' },
   'nav.deposit': { English: 'Deposit', Français: 'Dépôt', '简体中文': '充值', '한국어': '입금', Español: 'Depósito' },
   'nav.withdraw': { English: 'Withdraw', Français: 'Retrait', '简体中文': '提现', '한국어': '출금', Español: 'Retiro' },
