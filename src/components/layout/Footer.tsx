@@ -7,11 +7,11 @@ export function Footer() {
         <span>Online</span>
       </div>
 
-      {/* Credit + contact */}
+      {/* Credit */}
       <div className="flex items-center gap-1 text-text-secondary">
         <span>Made by</span>
         <a
-          href="https://github.com/CyphCube"
+          href="https://cyphcube.com"
           target="_blank"
           rel="noopener noreferrer"
           className="text-text-primary font-medium hover:text-accent-blue transition-colors"
@@ -20,13 +20,6 @@ export function Footer() {
         </a>
         <span>with</span>
         <span className="text-short">♥</span>
-        <span className="text-text-muted mx-1">·</span>
-        <a
-          href="mailto:info@cyphcube.com"
-          className="text-accent-blue hover:text-accent-blue-dim transition-colors"
-        >
-          info@cyphcube.com
-        </a>
       </div>
     </footer>
   )
